@@ -49,7 +49,9 @@ export async function askAICoach(
   }
 ): Promise<CoachResult> {
   const result = await generateText({
-    model: google("models/gemma-4-31b-it"),
+    model: google("gemma-4-26b-a4b-it"),
+    maxTokens: 1000,
+    temperature: 0.2,
     system: "You are an expert interview coach analyzing a candidate's answer. Provide highly constructive feedback.",
     prompt: `The candidate achieved the following overall scores in their interview simulation:
 - Overall Score: ${context.finalScore}/100
@@ -96,7 +98,9 @@ export async function generateInterviewQuestions(
   const systemPrompt = `You are an expert interviewer. ${personas[persona]} Each question must be short, direct, and distinct.`;
 
   const result = await generateText({
-    model: google("models/gemma-4-31b-it"),
+    model: google("gemma-4-26b-a4b-it"),
+    maxTokens: 500,
+    temperature: 0.7,
     system: systemPrompt,
     prompt: `Generate EXACTLY ${count} discrete interview questions for a candidate applying for the role of "${role}" at "${company}". 
     The questions should be a mix of behavioral and technical/role-specific, directly relevant to the role and the company's domain.
@@ -132,7 +136,9 @@ export async function generateFollowUpQuestion(
   const systemPrompt = `You are an expert interviewer. ${personas[persona]} You must ask a single short, direct, and highly relevant follow-up question based on the candidate's answer.`;
 
   const result = await generateText({
-    model: google("models/gemma-4-31b-it"),
+    model: google("gemma-4-26b-a4b-it"),
+    maxTokens: 200,
+    temperature: 0.5,
     system: systemPrompt,
     prompt: `The candidate is applying for "${role}" at "${company}".
     

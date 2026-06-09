@@ -160,6 +160,7 @@ export default function RecordingPage() {
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [saveError, setSaveError]   = useState<string | null>(null);
   const [isSaving, setIsSaving]     = useState(false);
+  const [isGeneratingFollowUp, setIsGeneratingFollowUp] = useState(false);
   const [audioLevels, setAudioLevels] = useState<number[]>(new Array(16).fill(6));
   const [liveEmotion, setLiveEmotion] = useState<string | null>(null);
 
@@ -547,25 +548,30 @@ export default function RecordingPage() {
           }
 
           if (!isLastQ) {
-            try {
-              const { generateFollowUpQuestion } = await import("@/app/actions");
-              const followUp = await generateFollowUpQuestion(
-                config.categoryLabel, 
-                config.questionTopic, 
-                config.persona || "friendly",
-                qText,
-                finalTranscript
-              );
-              if (followUp) {
-                 setQuestions(prev => {
-                   const newQ = [...prev];
-                   newQ[qIndex] = followUp; 
-                   return newQ;
-                 });
+            setIsGeneratingFollowUp(true);
+            (async () => {
+              try {
+                const { generateFollowUpQuestion } = await import("@/app/actions");
+                const followUp = await generateFollowUpQuestion(
+                  config.categoryLabel, 
+                  config.questionTopic, 
+                  config.persona || "friendly",
+                  qText,
+                  finalTranscript
+                );
+                if (followUp) {
+                   setQuestions(prev => {
+                     const newQ = [...prev];
+                     newQ[qIndex] = followUp; 
+                     return newQ;
+                   });
+                }
+              } catch (err) {
+                 console.error("Failed to generate follow up", err);
+              } finally {
+                 setIsGeneratingFollowUp(false);
               }
-            } catch (err) {
-               console.error("Failed to generate follow up", err);
-            }
+            })();
           }
 
           setIsSaving(false);
@@ -817,15 +823,33 @@ export default function RecordingPage() {
                       Ready for Question {currentQ}?
                     </p>
                     <p className="mt-2 max-w-[400px] text-xs leading-relaxed text-white/40">
-                      {questions[currentQ - 1]}
+                      {isGeneratingFollowUp ? (
+                        <span className="italic text-indigo-300">Preparing follow-up question...</span>
+                      ) : (
+                        questions[currentQ - 1]
+                      )}
                     </p>
                   </div>
                   <button
                     type="button"
+                    disabled={isGeneratingFollowUp}
                     onClick={() => { setPhase("countdown"); setCountdown(PRE_ROLL_SEC); }}
-                    className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 text-sm font-bold uppercase tracking-wide text-white hover:bg-indigo-700 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer animate-scale-up"
+                    className={`flex items-center gap-2 rounded-2xl px-6 py-3 text-sm font-bold uppercase tracking-wide text-white transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer animate-scale-up ${
+                      isGeneratingFollowUp 
+                        ? "bg-slate-700 text-slate-400 cursor-not-allowed shadow-none" 
+                        : "bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/20"
+                    }`}
                   >
-                    Start Question {currentQ} <IconArrowRight />
+                    {isGeneratingFollowUp ? (
+                      <>
+                        <span className="animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent inline-block mr-1" />
+                        Generating Question...
+                      </>
+                    ) : (
+                      <>
+                        Start Question {currentQ} <IconArrowRight />
+                      </>
+                    )}
                   </button>
                 </div>
               )}
