@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     const { prompt } = await req.json();
 
     const result = streamText({
-      model: google('gemma-4-26b-a4b-it'),
+      model: google('gemini-1.5-flash'),
       maxOutputTokens: 500,
       temperature: 0.3,
       system: "You are an expert interview evaluator providing an overall summary of the candidate's performance. Read the candidate's scores and feedback, then write a single highly cohesive overall performance summary (3-4 sentences). Highlight the most critical metrics or keywords using **double asterisks** for UI styling. Focus on the overall picture, DO NOT evaluate question by question.",
