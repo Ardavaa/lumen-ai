@@ -479,7 +479,7 @@ export default function LandingPage() {
             <div>
               <p className="mb-3 text-[11px] font-bold uppercase tracking-[1.5px] text-white/90">Technology</p>
               <ul className="flex flex-col gap-2">
-                {["ElevenLabs Scribe", "YOLOv8", "Wav2Vec2 SER", "IndoBERT", "S-BERT"].map((item) => (
+                {["Groq Whisper", "YOLOv8", "Wav2Vec2 SER", "IndoBERT", "S-BERT"].map((item) => (
                   <li key={item}>
                     <span className="text-[13px] font-light text-white/90">{item}</span>
                   </li>

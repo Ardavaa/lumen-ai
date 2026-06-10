@@ -25,7 +25,7 @@ type StepState = "pending" | "active" | "done" | "error";
 type Step = { id: number; label: string; tech: string };
 
 const BASE_STEPS: Step[] = [
-  { id: 1, label: "Audio Transcription",       tech: "ElevenLabs Scribe" },
+  { id: 1, label: "Audio Transcription",       tech: "Groq Whisper STT" },
   { id: 2, label: "Speech Pattern Analysis",   tech: "Wav2Vec2 · Silero VAD" },
   { id: 3, label: "Facial Expression",         tech: "YOLOv8 · Face Detector" },
   { id: 4, label: "Semantic Content Scoring",  tech: "IndoBERT · S-BERT" },

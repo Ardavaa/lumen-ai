@@ -22,9 +22,9 @@ interface ModelEntry {
 
 const INITIAL_MODELS: ModelEntry[] = [
   {
-    key: "elevenlabs",
-    label: "ElevenLabs Scribe",
-    description: "ElevenLabs API · transcribes your answer",
+    key: "groq",
+    label: "Groq Whisper STT",
+    description: "Groq API · transcribes your answer",
     status: "idle",
     elapsedMs: null,
     message: "",
