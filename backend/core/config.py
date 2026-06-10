@@ -39,8 +39,8 @@ ALLOWED_FRAME_MIME_TYPES: Final[frozenset[str]] = frozenset({"image/jpeg", "imag
 
 # ─── Model IDs ───────────────────────────────────────────────────────────────
 
-ELEVENLABS_API_KEY: Final[str] = os.environ.get("ELEVENLABS_API_KEY", "")
-ELEVENLABS_STT_MODEL_ID: Final[str] = "scribe_v2"
+GROQ_API_KEY: Final[str] = os.environ.get("GROQ_API_KEY", "")
+GROQ_STT_MODEL_ID: Final[str] = "whisper-large-v3-turbo"
 EMBEDDING_MODEL_ID: Final[str] = "intfloat/multilingual-e5-base"
 CROSS_ENCODER_MODEL_ID: Final[str] = "cross-encoder/mmarco-mMiniLM-L-12-v2"
 # Legacy alias — preflight route key remains ``sbert``.

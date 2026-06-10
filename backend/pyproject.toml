@@ -5,8 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "elevenlabs>=2.52.0",
     "fastapi>=0.136.1",
+    "groq>=1.4.0",
     "librosa>=0.11.0",
     "mediapipe>=0.10.35",
     "opencv-python>=4.13.0.92",

@@ -21,7 +21,7 @@ from core.config import (
     EMOTION_DELIVERY_BLEND_WEIGHT,
     EMOTION_MODEL_ID,
     EMBEDDING_MODEL_ID,
-    ELEVENLABS_STT_MODEL_ID,
+    GROQ_STT_MODEL_ID,
 )
 from ml_pipeline.audio.analysis import DeliveryAnalysisResult, analyze_delivery
 from ml_pipeline.audio.emotion import EmotionAnalysisResult, analyze_voice_emotion, blend_delivery_score, get_emotion_pipeline
@@ -623,7 +623,7 @@ def _run_preflight(key: str, label: str, model_id: str, loader: object) -> Prefl
 
 
 _PREFLIGHT_MODELS = [
-    ("elevenlabs", "ElevenLabs Scribe", ELEVENLABS_STT_MODEL_ID, get_transcription_pipeline),
+    ("groq", "Groq Whisper STT", GROQ_STT_MODEL_ID, get_transcription_pipeline),
     ("wav2vec2",  "Wav2Vec2 Voice SER", EMOTION_MODEL_ID,  get_emotion_pipeline),
     ("sbert",     "E5 Content Embed",   EMBEDDING_MODEL_ID, get_embedding_model),
     ("yolo",      "YOLOv8 Facial",      "best.pt",         get_emotion_model),
@@ -638,7 +638,7 @@ async def preflight_check(model_key: str) -> PreflightResult:
     Called sequentially by the frontend checklist UI before recording starts.
 
     Args:
-        model_key: One of ``elevenlabs``, ``wav2vec2``, ``sbert``, ``yolo``,
+        model_key: One of ``groq``, ``wav2vec2``, ``sbert``, ``yolo``,
             ``mediapipe``.
 
     Returns:

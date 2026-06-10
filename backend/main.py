@@ -77,7 +77,7 @@ async def _run_warmup() -> None:
     from ml_pipeline.video.emotion import get_emotion_model, get_face_detector
 
     tasks = [
-        ("elevenlabs",   get_transcription_pipeline),
+        ("groq",   get_transcription_pipeline),
         ("wav2vec2",  get_emotion_pipeline),
         ("sbert",     get_sbert_model),
         ("yolo-cls",  get_emotion_model),
