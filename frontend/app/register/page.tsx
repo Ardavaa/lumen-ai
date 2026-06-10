@@ -39,6 +39,9 @@ export default function RegisterPage() {
       provider: "github",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          prompt: 'consent',
+        },
       },
     });
 
