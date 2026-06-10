@@ -1,3 +1,12 @@
+---
+title: Lumen AI Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
 # Backend Setup
 
 This backend is managed with `uv` and currently keeps the existing Python constraint from `pyproject.toml`.
