@@ -1,5 +1,6 @@
 """Central configuration for models, scoring weights, and analysis thresholds."""
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -38,7 +39,8 @@ ALLOWED_FRAME_MIME_TYPES: Final[frozenset[str]] = frozenset({"image/jpeg", "imag
 
 # ─── Model IDs ───────────────────────────────────────────────────────────────
 
-WHISPER_MODEL_ID: Final[str] = "Systran/faster-whisper-base"
+ELEVENLABS_API_KEY: Final[str] = os.environ.get("ELEVENLABS_API_KEY", "")
+ELEVENLABS_STT_MODEL_ID: Final[str] = "scribe_v2"
 EMBEDDING_MODEL_ID: Final[str] = "intfloat/multilingual-e5-base"
 CROSS_ENCODER_MODEL_ID: Final[str] = "cross-encoder/mmarco-mMiniLM-L-12-v2"
 # Legacy alias — preflight route key remains ``sbert``.

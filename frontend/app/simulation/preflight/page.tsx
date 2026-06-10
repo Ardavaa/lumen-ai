@@ -22,9 +22,9 @@ interface ModelEntry {
 
 const INITIAL_MODELS: ModelEntry[] = [
   {
-    key: "whisper",
-    label: "Whisper ASR",
-    description: "Speech-to-text · transcribes your answer",
+    key: "elevenlabs",
+    label: "ElevenLabs Scribe",
+    description: "ElevenLabs API · transcribes your answer",
     status: "idle",
     elapsedMs: null,
     message: "",

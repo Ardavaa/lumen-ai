@@ -21,7 +21,7 @@ from core.config import (
     EMOTION_DELIVERY_BLEND_WEIGHT,
     EMOTION_MODEL_ID,
     EMBEDDING_MODEL_ID,
-    WHISPER_MODEL_ID,
+    ELEVENLABS_STT_MODEL_ID,
 )
 from ml_pipeline.audio.analysis import DeliveryAnalysisResult, analyze_delivery
 from ml_pipeline.audio.emotion import EmotionAnalysisResult, analyze_voice_emotion, blend_delivery_score, get_emotion_pipeline
@@ -128,7 +128,7 @@ class AnalyzeResponse(BaseModel):
         content_score: Text/content dimension score.
         delivery_score: Audio delivery dimension score.
         non_verbal_score: Non-verbal dimension score.
-        transcription: Whisper speech-to-text output.
+        transcription: ElevenLabs speech-to-text output.
         delivery_metrics: Raw delivery metrics.
         emotion_metrics: Voice emotion (SER) metrics.
         video_emotion_metrics: Facial emotion metrics from the video stream.
@@ -235,7 +235,7 @@ async def analyze_interview(
 ) -> AnalyzeResponse:
     """Analyze uploaded interview media end-to-end.
 
-    Pipeline: ffmpeg extraction → Whisper transcription → delivery + voice emotion →
+    Pipeline: ffmpeg extraction → ElevenLabs transcription → delivery + voice emotion →
     E5 content score → video facial emotion (YOLOv8-cls + OpenCV) →
     weighted fusion.
 
@@ -623,7 +623,7 @@ def _run_preflight(key: str, label: str, model_id: str, loader: object) -> Prefl
 
 
 _PREFLIGHT_MODELS = [
-    ("whisper",   "Whisper ASR",        WHISPER_MODEL_ID,  get_transcription_pipeline),
+    ("elevenlabs", "ElevenLabs Scribe", ELEVENLABS_STT_MODEL_ID, get_transcription_pipeline),
     ("wav2vec2",  "Wav2Vec2 Voice SER", EMOTION_MODEL_ID,  get_emotion_pipeline),
     ("sbert",     "E5 Content Embed",   EMBEDDING_MODEL_ID, get_embedding_model),
     ("yolo",      "YOLOv8 Facial",      "best.pt",         get_emotion_model),
@@ -638,7 +638,7 @@ async def preflight_check(model_key: str) -> PreflightResult:
     Called sequentially by the frontend checklist UI before recording starts.
 
     Args:
-        model_key: One of ``whisper``, ``wav2vec2``, ``sbert``, ``yolo``,
+        model_key: One of ``elevenlabs``, ``wav2vec2``, ``sbert``, ``yolo``,
             ``mediapipe``.
 
     Returns:
