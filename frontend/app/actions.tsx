@@ -32,7 +32,7 @@ export async function askAICoach(
   const result = await generateObject({
     model: google("gemma-4-26b-a4b-it"),
     schema: coachSchema,
-    maxTokens: 1000,
+    maxOutputTokens: 1000,
     temperature: 0.2,
     system: "You are an expert interview coach analyzing a candidate's answer. Provide highly constructive feedback.",
     prompt: `The candidate achieved the following overall scores in their interview simulation:
@@ -69,7 +69,7 @@ export async function generateInterviewQuestions(
   const result = await generateObject({
     model: google("gemma-4-26b-a4b-it"),
     schema: schema,
-    maxTokens: 500,
+    maxOutputTokens: 500,
     temperature: 0.7,
     system: systemPrompt,
     prompt: `Generate EXACTLY ${count} discrete interview questions for a candidate applying for the role of "${role}" at "${company}". 
@@ -99,7 +99,7 @@ export async function generateFollowUpQuestion(
   const result = await generateObject({
     model: google("gemma-4-26b-a4b-it"),
     schema: schema,
-    maxTokens: 200,
+    maxOutputTokens: 200,
     temperature: 0.5,
     system: systemPrompt,
     prompt: `The candidate is applying for "${role}" at "${company}".
