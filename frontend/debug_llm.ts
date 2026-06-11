@@ -39,7 +39,7 @@ async function main() {
     });
 
     console.log("SUCCESS:", result.object);
-  } catch (error) {
+  } catch (error: any) {
     console.error("SDK Error Name:", error.name);
     console.error("SDK Error Message:", error.message);
     if (error.text) {
