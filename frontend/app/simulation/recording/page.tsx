@@ -186,29 +186,23 @@ export default function RecordingPage() {
   const fetchAttempted = useRef(false);
 
   useEffect(() => {
-    let mounted = true;
     async function getQuestions() {
       if (fetchAttempted.current) return;
       fetchAttempted.current = true;
       try {
         const generated = await generateInterviewQuestions(config.categoryLabel, config.questionTopic, 3, config.persona || "friendly");
-        if (mounted) {
-          setQuestions(generated);
-          setPhase("camera-init");
-        }
+        setQuestions(generated);
+        setPhase("camera-init");
       } catch (err) {
         console.error("Failed to generate questions via Gemma, using defaults.", err);
-        if (mounted) {
-          setQuestions(config.questions);
-          setPhase("camera-init");
-        }
+        setQuestions(config.questions);
+        setPhase("camera-init");
       }
     }
     
     if (phase === "generating") {
       getQuestions();
     }
-    return () => { mounted = false; };
   }, [config.categoryLabel, config.questionTopic, config.questions, config.persona, phase]);
 
   // Init Speech Recognition

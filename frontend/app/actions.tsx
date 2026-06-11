@@ -30,11 +30,11 @@ export async function askAICoach(
   }
 ): Promise<CoachResult> {
   const result = await generateObject({
-    model: google("gemma-4-26b-a4b-it"),
+    model: google("gemma-4-31b-it"),
     schema: coachSchema,
     maxOutputTokens: 1000,
     temperature: 0.2,
-    system: "You are an expert interview coach analyzing a candidate's answer. Provide highly constructive feedback.",
+    system: "You are an expert interview coach analyzing a candidate's answer. Provide highly constructive feedback. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no ```json). Do NOT include any introductory or concluding text. Your response must start with '{' and end with '}'.",
     prompt: `The candidate achieved the following overall scores in their interview simulation:
 - Overall Score: ${context.finalScore}/100
 - Content Quality: ${context.contentScore}/100
@@ -62,12 +62,12 @@ export async function generateInterviewQuestions(
     stress: "You are a stress-tester interviewer. You are skeptical, pressure-inducing, and challenging. Your goal is to see how the candidate handles difficult situations."
   };
 
-  const systemPrompt = `You are an expert interviewer. ${personas[persona]} Each question must be short, direct, and distinct.`;
+  const systemPrompt = `You are an expert interviewer. ${personas[persona]} Each question must be short, direct, and distinct. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text.`;
 
   const schema = z.object({ questions: z.array(z.string()) });
 
   const result = await generateObject({
-    model: google("gemma-4-26b-a4b-it"),
+    model: google("gemma-4-31b-it"),
     schema: schema,
     maxOutputTokens: 500,
     temperature: 0.7,
@@ -92,12 +92,12 @@ export async function generateFollowUpQuestion(
     stress: "You are a stress-tester interviewer. You are skeptical, pressure-inducing, and challenging. Your goal is to see how the candidate handles difficult situations."
   };
 
-  const systemPrompt = `You are an expert interviewer. ${personas[persona]} You must ask a single short, direct, and highly relevant follow-up question based on the candidate's answer.`;
+  const systemPrompt = `You are an expert interviewer. ${personas[persona]} You must ask a single short, direct, and highly relevant follow-up question based on the candidate's answer. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text.`;
 
   const schema = z.object({ question: z.string() });
 
   const result = await generateObject({
-    model: google("gemma-4-26b-a4b-it"),
+    model: google("gemma-4-31b-it"),
     schema: schema,
     maxOutputTokens: 200,
     temperature: 0.5,

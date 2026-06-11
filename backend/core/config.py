@@ -3,6 +3,11 @@
 import os
 from pathlib import Path
 from typing import Final
+from dotenv import load_dotenv
+
+# Ensure environment variables are loaded before configuring models
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_env_path)
 
 # ─── Upload and extraction limits ────────────────────────────────────────────
 
