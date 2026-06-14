@@ -190,7 +190,7 @@ export default function RecordingPage() {
       if (fetchAttempted.current) return;
       fetchAttempted.current = true;
       try {
-        const generated = await generateInterviewQuestions(config.categoryLabel, config.questionTopic, 3, config.persona || "friendly");
+        const generated = await generateInterviewQuestions(config.categoryLabel, config.questionTopic, 3, config.persona || "friendly", config.language || "en");
         setQuestions(generated);
         setPhase("camera-init");
       } catch (err) {
@@ -203,7 +203,7 @@ export default function RecordingPage() {
     if (phase === "generating") {
       getQuestions();
     }
-  }, [config.categoryLabel, config.questionTopic, config.questions, config.persona, phase]);
+  }, [config.categoryLabel, config.questionTopic, config.questions, config.persona, config.language, phase]);
 
   // Init Speech Recognition
   useEffect(() => {

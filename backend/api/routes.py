@@ -232,6 +232,7 @@ async def analyze_interview(
     file: UploadFile = File(...),
     question_text: str = Form(default=""),
     question_topic: str = Form(default=""),
+    language: str = Form(default="en"),
 ) -> AnalyzeResponse:
     """Analyze uploaded interview media end-to-end.
 
@@ -373,6 +374,7 @@ def _process_interview(
     audio_path: Path,
     question_text: str,
     question_topic: str,
+    language: str = "en",
 ) -> _ProcessResult:
     """Run the full blocking analysis pipeline.
 
@@ -414,6 +416,7 @@ def _process_interview(
         video_emotion=video_emotion,
         blended_delivery_score=blended_delivery,
         content_details=content,
+        language=language,
     )
 
     return _ProcessResult(
@@ -435,6 +438,7 @@ async def _process_interview_async(
     job_id: str,
     file_name: str,
     file_size_bytes: int,
+    language: str = "en",
 ) -> None:
     """Background task to run the heavy ML pipeline and trigger a webhook."""
     log.info("async_analyze: starting background task for job_id=%r", job_id)
@@ -453,6 +457,7 @@ async def _process_interview_async(
                 audio_path,
                 question_text,
                 question_topic,
+                language,
             )
             
         elapsed_s = time.monotonic() - t_start
@@ -541,6 +546,7 @@ async def analyze_interview_async(
     question_topic: str = Form(default=""),
     webhook_url: str = Form(...),
     job_id: str = Form(...),
+    language: str = Form(default="en"),
 ) -> AnalyzeAsyncResponse:
     """Queue media for background analysis and return immediately."""
     log.info(
@@ -570,6 +576,7 @@ async def analyze_interview_async(
         job_id=job_id,
         file_name=file.filename or "uploaded-media",
         file_size_bytes=upload.size_bytes,
+        language=language,
     )
 
     return AnalyzeAsyncResponse(status="queued", job_id=job_id)

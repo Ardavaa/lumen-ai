@@ -46,6 +46,11 @@ function parseHistorySnapshot(snapshot: string): SessionRecord[] {
   }
 }
 
+function getLanguageSnapshot(): string {
+  if (typeof window === "undefined") return "en";
+  return localStorage.getItem(STORAGE_KEYS.language) ?? "en";
+}
+
 // ─── UI COMPONENTS ──────────────────────────────────────────────────────────
 
 
@@ -148,6 +153,14 @@ export default function Dashboard() {
   const [loadingModelIndex, setLoadingModelIndex] = useState(0);
   const [preflightError, setPreflightError] = useState("");
 
+  const languageStr = useSyncExternalStore(subscribeToStorage, getLanguageSnapshot, () => "en");
+  const language = (languageStr === "id" ? "id" : "en") as "en" | "id";
+
+  const setLanguage = (lang: "en" | "id") => {
+    localStorage.setItem(STORAGE_KEYS.language, lang);
+    window.dispatchEvent(new Event("storage"));
+  };
+
   const [selectedId, setSelectedId] = useState<CategoryId | null>("sw-engineer");
   const [customTopic, setCustomTopic] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<"friendly" | "strict" | "stress">("friendly");
@@ -222,14 +235,21 @@ export default function Dashboard() {
     if (custom) {
       return {
         categoryId: "custom",
-        categoryLabel: "Custom Topic",
+        categoryLabel: language === "id" ? "Topik Kustom" : "Custom Topic",
         questionTopic: custom,
         persona: selectedPersona,
-        questions: [
-          `Introduce your background for this topic: ${custom}.`,
-          "Describe a relevant challenge you have handled and the steps you took.",
-          "What would you prioritize in your first 30 days for this role or context?",
-        ],
+        language,
+        questions: language === "id" 
+          ? [
+              `Perkenalkan latar belakang Anda untuk topik ini: ${custom}.`,
+              "Gambarkan tantangan relevan yang pernah Anda tangani dan langkah yang Anda ambil.",
+              "Apa yang akan Anda prioritaskan di 30 hari pertama untuk peran atau konteks ini?",
+            ]
+          : [
+              `Introduce your background for this topic: ${custom}.`,
+              "Describe a relevant challenge you have handled and the steps you took.",
+              "What would you prioritize in your first 30 days for this role or context?",
+            ],
       };
     }
 
@@ -238,14 +258,16 @@ export default function Dashboard() {
       return {
         categoryId: "sw-engineer",
         persona: selectedPersona,
-        ...SIMULATION_CATEGORIES["sw-engineer"],
+        language,
+        ...SIMULATION_CATEGORIES[language]["sw-engineer"],
       };
     }
 
     return {
       categoryId: category.id,
       persona: selectedPersona,
-      ...SIMULATION_CATEGORIES[category.id],
+      language,
+      ...SIMULATION_CATEGORIES[language][category.id],
     };
   }
 
@@ -317,13 +339,15 @@ export default function Dashboard() {
   }, []);
 
   const { stats, insights, trends, deltas } = useMemo(() => {
+    const isId = language === "id";
+
     if (sessions.length === 0) {
       return {
         stats: { avgScore: "0", totalSessions: "0", avgFiller: "0", avgNonVerbal: "0", readiness: 0 },
         insights: { 
-          title: "Setup Your Baseline",
-          message: "Start your first simulation to establish a performance baseline and unlock personalized AI coaching.",
-          badge: "Ready to Start",
+          title: isId ? "Mulai Penilaian Anda" : "Setup Your Baseline",
+          message: isId ? "Mulai simulasi pertama Anda untuk mendapatkan penilaian awal dan mengaktifkan pelatihan AI khusus." : "Start your first simulation to establish a performance baseline and unlock personalized AI coaching.",
+          badge: isId ? "Siap Dimulai" : "Ready to Start",
           percentile: "Top 100%"
         },
         trends: { scores: [], fillers: [], nvs: [] },
@@ -365,27 +389,37 @@ export default function Dashboard() {
     }
 
     // Insight Logic
-    let insightTitle = "Consistent Trajectory";
-    let insightMessage = `You're maintaining a steady readiness index of ${readiness}. Focus on pacing and pausing to push into the next percentile bracket.`;
-    let insightBadge = "On Track";
+    let insightTitle = isId ? "Trajektori Konsisten" : "Consistent Trajectory";
+    let insightMessage = isId 
+      ? `Anda mempertahankan indeks kesiapan yang stabil di angka ${readiness}. Fokus pada tempo dan jeda untuk mencapai persentil berikutnya.`
+      : `You're maintaining a steady readiness index of ${readiness}. Focus on pacing and pausing to push into the next percentile bracket.`;
+    let insightBadge = isId ? "Sesuai Jalur" : "On Track";
     
     if (sessions.length >= 2) {
       if (scoreDelta >= 5) {
-        insightTitle = "Accelerated Growth";
-        insightMessage = `Incredible momentum! Your performance has surged recently, heavily driven by a drop in filler words and increased non-verbal confidence.`;
-        insightBadge = "Trending Up";
+        insightTitle = isId ? "Perkembangan Pesat" : "Accelerated Growth";
+        insightMessage = isId 
+          ? `Momentum luar biasa! Performa Anda meningkat tajam belakangan ini, didorong oleh berkurangnya kata pengisi dan peningkatan kepercayaan diri non-verbal.`
+          : `Incredible momentum! Your performance has surged recently, heavily driven by a drop in filler words and increased non-verbal confidence.`;
+        insightBadge = isId ? "Tren Naik" : "Trending Up";
       } else if (parseFloat(avgFiller) < 3) {
-        insightTitle = "Exceptional Clarity";
-        insightMessage = `Your filler word rate is in the top 5% of all users. You speak with high intention, giving your answers significant gravitas.`;
-        insightBadge = "Elite Pacing";
+        insightTitle = isId ? "Kejelasan Luar Biasa" : "Exceptional Clarity";
+        insightMessage = isId 
+          ? `Tingkat kata pengisi Anda berada di 5% teratas dari seluruh pengguna. Anda berbicara dengan tujuan yang kuat, memberikan bobot yang signifikan pada jawaban Anda.`
+          : `Your filler word rate is in the top 5% of all users. You speak with high intention, giving your answers significant gravitas.`;
+        insightBadge = isId ? "Tempo Elit" : "Elite Pacing";
       } else if (scoreDelta < -5) {
-        insightTitle = "Recalibration Needed";
-        insightMessage = `Your recent scores showed a slight dip. This often happens under pressure. Revisit your best sessions to realign your delivery style.`;
-        insightBadge = "Focus Area";
+        insightTitle = isId ? "Perlu Penyesuaian" : "Recalibration Needed";
+        insightMessage = isId 
+          ? `Skor terbaru Anda sedikit menurun. Ini sering terjadi di bawah tekanan. Kunjungi kembali sesi terbaik Anda untuk menyelaraskan gaya penyampaian Anda.`
+          : `Your recent scores showed a slight dip. This often happens under pressure. Revisit your best sessions to realign your delivery style.`;
+        insightBadge = isId ? "Area Fokus" : "Focus Area";
       } else if (avgScore >= 85) {
-        insightTitle = "Interview Ready";
-        insightMessage = `Your metrics indicate you are highly prepared. Your eye contact and structural delivery are operating at a masterful level.`;
-        insightBadge = "Masterful";
+        insightTitle = isId ? "Siap Wawancara" : "Interview Ready";
+        insightMessage = isId 
+          ? `Metrik Anda menunjukkan bahwa Anda sangat siap. Kontak mata dan penyampaian terstruktur Anda berada pada tingkat yang sangat baik.`
+          : `Your metrics indicate you are highly prepared. Your eye contact and structural delivery are operating at a masterful level.`;
+        insightBadge = isId ? "Sangat Menguasai" : "Masterful";
       }
     }
 
@@ -405,7 +439,7 @@ export default function Dashboard() {
       },
       deltas: { score: scoreDelta, filler: fillerDelta, nv: 0 }
     };
-  }, [sessions]);
+  }, [sessions, language]);
 
   const recent = sessions.slice(0, 5);
 
@@ -423,6 +457,24 @@ export default function Dashboard() {
 
         <div className="mx-auto w-full max-w-6xl px-8 py-10 lg:px-12 lg:py-12 flex flex-col gap-8">
           
+          {/* Header & Language Switcher */}
+          <div className="flex justify-end w-full">
+            <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 shadow-sm">
+              <button 
+                onClick={() => setLanguage("en")} 
+                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'en' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                English
+              </button>
+              <button 
+                onClick={() => setLanguage("id")} 
+                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'id' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Indonesia
+              </button>
+            </div>
+          </div>
+
           {/* ── HERO SECTION ── */}
           <BorderGlow
             edgeSensitivity={30}
@@ -470,10 +522,10 @@ export default function Dashboard() {
                       />
                     </div>
                     <div className="flex flex-col">
-                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-400">Login Streak</div>
+                      <div className="text-xs font-semibold uppercase tracking-widest text-slate-400">{language === 'id' ? 'Kunjungan Beruntun' : 'Login Streak'}</div>
                       <div className="flex items-baseline gap-1.5">
                         <span className="text-3xl font-black text-white">{streak}</span>
-                        <span className="text-sm font-medium text-slate-400">{streak === 1 ? 'Day' : 'Days'}</span>
+                        <span className="text-sm font-medium text-slate-400">{language === 'id' ? 'Hari' : (streak === 1 ? 'Day' : 'Days')}</span>
                       </div>
                     </div>
                   </div>
@@ -481,9 +533,9 @@ export default function Dashboard() {
                   <div className="hidden sm:block h-10 w-px bg-white/10" />
                   
                   <div className="flex flex-col gap-1.5 justify-center">
-                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-0.5">Weekly Progress</div>
+                    <div className="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-0.5">{language === 'id' ? 'Kemajuan Mingguan' : 'Weekly Progress'}</div>
                     <div className="flex gap-2">
-                      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => {
+                      {(language === 'id' ? ['S', 'S', 'R', 'K', 'J', 'S', 'M'] : ['M', 'T', 'W', 'T', 'F', 'S', 'S']).map((day, idx) => {
                         const todayIndex = (new Date().getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
                         const isActive = idx === todayIndex;
                         const isPastCompleted = idx < todayIndex && (todayIndex - idx) < streak;
@@ -509,9 +561,7 @@ export default function Dashboard() {
               
               {/* Right: Primary Action Center (Glassmorphism Button) */}
               <div className="relative z-10 shrink-0 flex flex-col items-center xl:items-end w-full xl:w-auto">
-                <button type="button" onClick={() => setIsSetupOpen(true)}>
-                  <ButtonWithIcon />
-                </button>
+                <ButtonWithIcon onClick={() => setIsSetupOpen(true)} />
               </div>
             </div>
           </BorderGlow>
@@ -522,7 +572,7 @@ export default function Dashboard() {
             {/* Card 1: Performance Avg */}
             <div className="group relative flex flex-col justify-between overflow-hidden rounded-[20px] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <div className="flex flex-col gap-1 mb-2">
-                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Global Score</div>
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">{language === 'id' ? 'Skor Global' : 'Global Score'}</div>
                 <div className="flex items-baseline gap-1.5">
                   <div className="text-3xl font-bold tracking-tight text-slate-900">{stats.avgScore}</div>
                   <div className="text-sm font-semibold text-slate-400">/100</div>
@@ -541,7 +591,7 @@ export default function Dashboard() {
             {/* Card 2: Filler Reduction */}
             <div className="group relative flex flex-col justify-between overflow-hidden rounded-[20px] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <div className="flex flex-col gap-1 mb-2">
-                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Filler Words</div>
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">{language === 'id' ? 'Kata Pengisi' : 'Filler Words'}</div>
                 <div className="flex items-baseline gap-1.5">
                   <div className="text-3xl font-bold tracking-tight text-slate-900">{stats.avgFiller}</div>
                   <div className="text-sm font-semibold text-slate-400">%</div>
@@ -560,7 +610,7 @@ export default function Dashboard() {
             {/* Card 3: Confidence / NV */}
             <div className="group relative flex flex-col justify-between overflow-hidden rounded-[20px] bg-white p-5 shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-slate-100 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)]">
               <div className="flex flex-col gap-1 mb-2">
-                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">Visual Confidence</div>
+                <div className="text-xs font-medium text-slate-400 uppercase tracking-wider">{language === 'id' ? 'Kepercayaan Diri Visual' : 'Visual Confidence'}</div>
                 <div className="flex items-baseline gap-1.5">
                   <div className="text-3xl font-bold tracking-tight text-slate-900">{stats.avgNonVerbal}</div>
                   <div className="text-sm font-semibold text-slate-400">/100</div>
@@ -577,14 +627,14 @@ export default function Dashboard() {
           <div className="flex flex-col gap-6">
             <div className="flex items-center justify-between px-2">
               <div>
-                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">Training History</h2>
-                <p className="text-sm font-light text-slate-500 mt-1">Review past simulations to observe your evolving delivery style.</p>
+                <h2 className="text-2xl font-semibold tracking-tight text-slate-900">{language === 'id' ? 'Riwayat Pelatihan' : 'Training History'}</h2>
+                <p className="text-sm font-light text-slate-500 mt-1">{language === 'id' ? 'Tinjau simulasi sebelumnya untuk melihat perkembangan gaya penyampaian Anda.' : 'Review past simulations to observe your evolving delivery style.'}</p>
               </div>
               <Link
                 href="/history"
                 className="hidden sm:flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-200 hover:text-slate-900"
               >
-                <span>View Timeline</span>
+                <span>{language === 'id' ? 'Lihat Linimasa' : 'View Timeline'}</span>
                 <AppIcon name="arrow-right" className="size-3.5" strokeWidth={3} />
               </Link>
             </div>
@@ -595,8 +645,8 @@ export default function Dashboard() {
                   <AppIcon name="file" className="size-8" strokeWidth={2} />
                 </div>
                 <div className="flex flex-col gap-2">
-                  <p className="text-xl font-bold text-slate-900 tracking-tight">Awaiting First Session</p>
-                  <p className="text-base font-medium text-slate-500 max-w-md">Your chronological progress, coaching badges, and detailed session analysis will populate here.</p>
+                  <p className="text-xl font-bold text-slate-900 tracking-tight">{language === 'id' ? 'Menunggu Sesi Pertama' : 'Awaiting First Session'}</p>
+                  <p className="text-base font-medium text-slate-500 max-w-md">{language === 'id' ? 'Progres kronologis Anda, lencana pelatihan, dan analisis sesi terperinci akan muncul di sini.' : 'Your chronological progress, coaching badges, and detailed session analysis will populate here.'}</p>
                 </div>
               </div>
             ) : (
@@ -726,10 +776,10 @@ export default function Dashboard() {
               <div className="flex-1 overflow-y-auto px-8 pb-8 pt-2 sm:px-12 custom-scrollbar">
                 <div className="mx-auto w-full max-w-[680px]">
                   <h2 className="text-[32px] font-semibold tracking-tight text-slate-900">
-                    What are you preparing for?
+                    {language === 'id' ? 'Apa yang sedang Anda persiapkan?' : 'What are you preparing for?'}
                   </h2>
                   <p className="mt-2 text-[15px] font-light text-slate-500">
-                    Select a category to tailor the questions and scoring rubric, or define your own topic.
+                    {language === 'id' ? 'Pilih kategori untuk menyesuaikan pertanyaan dan rubrik penilaian, atau tentukan topik Anda sendiri.' : 'Select a category to tailor the questions and scoring rubric, or define your own topic.'}
                   </p>
 
                   {/* Category grid */}
@@ -737,7 +787,11 @@ export default function Dashboard() {
                     {CATEGORIES.map((cat) => (
                       <CategoryCard
                         key={cat.id}
-                        category={cat}
+                        category={{
+                          ...cat,
+                          name: language === 'id' ? SIMULATION_CATEGORIES[language][cat.id].categoryLabel : cat.name,
+                          meta: language === 'id' ? cat.meta.replace('Q', 'P') : cat.meta
+                        }}
                         selected={selectedId === cat.id}
                         onClick={() => setSelectedId(cat.id === selectedId ? null : cat.id)}
                       />
@@ -746,16 +800,16 @@ export default function Dashboard() {
 
                   {/* Custom topic */}
                   <div className="mt-10 flex flex-col gap-2">
-                    <label className="text-[14px] font-medium text-slate-800">Or define a custom topic</label>
+                    <label className="text-[14px] font-medium text-slate-800">{language === 'id' ? 'Atau tentukan topik kustom' : 'Or define a custom topic'}</label>
                     <p className="text-[13px] text-slate-500 mb-1">
-                      Paste a job description or describe the role. We'll generate context-aware questions.
+                      {language === 'id' ? 'Tempelkan deskripsi pekerjaan atau jelaskan perannya. Kami akan membuat pertanyaan yang relevan dengan konteks.' : 'Paste a job description or describe the role. We\'ll generate context-aware questions.'}
                     </p>
                     <div className="relative">
                       <input
                         type="text"
                         value={customTopic}
                         onChange={(e) => setCustomTopic(e.target.value)}
-                        placeholder="e.g., Senior Backend Engineer at a fintech startup..."
+                        placeholder={language === 'id' ? 'misal, Senior Backend Engineer di startup fintech...' : 'e.g., Senior Backend Engineer at a fintech startup...'}
                         className="w-full rounded-[16px] border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
                       />
                     </div>
@@ -763,12 +817,12 @@ export default function Dashboard() {
 
                   {/* Persona Selection */}
                   <div className="mt-10 flex flex-col gap-3">
-                    <label className="text-[14px] font-medium text-slate-800">Interviewer Persona</label>
+                    <label className="text-[14px] font-medium text-slate-800">{language === 'id' ? 'Persona Pewawancara' : 'Interviewer Persona'}</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {[
-                        { id: "friendly", title: "Friendly HR", desc: "Supportive & relaxed", emoji: "😊" },
-                        { id: "strict", title: "Strict Tech Lead", desc: "Direct & technical", emoji: "👔" },
-                        { id: "stress", title: "Stress Interviewer", desc: "Pressuring & skeptical", emoji: "⚡" }
+                        { id: "friendly", title: language === 'id' ? "HR Ramah" : "Friendly HR", desc: language === 'id' ? "Suportif & santai" : "Supportive & relaxed", emoji: "😊" },
+                        { id: "strict", title: language === 'id' ? "Tech Lead Tegas" : "Strict Tech Lead", desc: language === 'id' ? "Langsung & teknis" : "Direct & technical", emoji: "👔" },
+                        { id: "stress", title: language === 'id' ? "Pewawancara Menekan" : "Stress Interviewer", desc: language === 'id' ? "Menekan & skeptis" : "Pressuring & skeptical", emoji: "⚡" }
                       ].map((persona) => {
                         const isSelected = selectedPersona === persona.id;
                         return (
@@ -799,7 +853,7 @@ export default function Dashboard() {
                       onClick={() => setIsSetupOpen(false)}
                       className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                     >
-                      Cancel
+                      {language === 'id' ? 'Batal' : 'Cancel'}
                     </button>
                     <button
                       type="button"
@@ -807,7 +861,7 @@ export default function Dashboard() {
                       onClick={handleContinue}
                       className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-lg hover:shadow-slate-900/20"
                     >
-                      Start Preflight
+                      {language === 'id' ? 'Mulai Preflight' : 'Start Preflight'}
                       <AppIcon name="arrow-right" className="size-4" />
                     </button>
                   </div>
@@ -820,17 +874,17 @@ export default function Dashboard() {
                     <div className="flex size-14 items-center justify-center rounded-full bg-red-50 text-red-500 ring-1 ring-red-500/20 shadow-sm">
                       <AppIcon name="x" className="size-6" />
                     </div>
-                    <h3 className="text-[18px] font-semibold text-slate-900">Loading Error</h3>
+                    <h3 className="text-[18px] font-semibold text-slate-900">{language === 'id' ? 'Kesalahan Memuat' : 'Loading Error'}</h3>
                     <p className="text-[14px] text-slate-500">{preflightError}</p>
                     <div className="mt-4 flex gap-3">
                       <button onClick={() => setSetupPhase("options")} className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors">
-                        Cancel
+                        {language === 'id' ? 'Batal' : 'Cancel'}
                       </button>
                       <button 
                         onClick={() => { setPreflightError(""); setLoadingModelIndex(0); setSetupPhase("options"); setTimeout(() => setSetupPhase("preflight"), 100); }} 
                         className="rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white hover:bg-slate-800 transition-all shadow-md"
                       >
-                        Retry
+                        {language === 'id' ? 'Coba Lagi' : 'Retry'}
                       </button>
                     </div>
                   </div>
@@ -848,10 +902,13 @@ export default function Dashboard() {
                     </div>
                     
                     <div className="flex flex-col gap-2 w-full">
-                      <h3 className="text-[18px] font-semibold text-slate-900 tracking-tight">Preparing Environment</h3>
+                      <h3 className="text-[18px] font-semibold text-slate-900 tracking-tight">{language === 'id' ? 'Menyiapkan Lingkungan' : 'Preparing Environment'}</h3>
                       <p className="text-[14px] text-slate-500 animate-pulse font-medium">
-                        Loading {
-                          ["Speech to Text Model", "Voice Emotion Model", "Semantic Scoring Model", "Facial Expression Model", "Face Detector Model"][loadingModelIndex]
+                        {language === 'id' ? 'Memuat ' : 'Loading '} {
+                          (language === 'id' 
+                            ? ["Model Speech to Text", "Model Emosi Suara", "Model Penilaian Semantik", "Model Ekspresi Wajah", "Model Detektor Wajah"]
+                            : ["Speech to Text Model", "Voice Emotion Model", "Semantic Scoring Model", "Facial Expression Model", "Face Detector Model"]
+                          )[loadingModelIndex]
                         }...
                       </p>
                     </div>

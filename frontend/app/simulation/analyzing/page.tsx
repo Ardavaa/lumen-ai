@@ -187,6 +187,7 @@ export default function AnalyzingPage() {
           questionTopic: getQuestionTopic(),
           questionText: qText,
           mimeType: answer.mimeType,
+          language: config.language ?? "en",
         });
 
         let uploadPromise = Promise.resolve();
@@ -263,6 +264,7 @@ export default function AnalyzingPage() {
         questionTopic: getQuestionTopic(),
         questionText: qText,
         mimeType: answer.mimeType,
+        language: config.language ?? "en",
       });
       saveAnalysisResult(result);
       saveSessionToHistory(result, getQuestionTopic(), videoUrls);

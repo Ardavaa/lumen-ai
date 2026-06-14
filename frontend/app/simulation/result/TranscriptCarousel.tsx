@@ -161,7 +161,8 @@ export function TranscriptCarousel({
     setLoadingMap(prev => ({ ...prev, [currentIndex]: true }));
     setErrorMap(prev => ({ ...prev, [currentIndex]: "" }));
     try {
-      const response = await askAICoach(questions[currentIndex], transcripts[currentIndex], context);
+      const lang = typeof window !== "undefined" ? localStorage.getItem("lumenLanguage") || "en" : "en";
+      const response = await askAICoach(questions[currentIndex], transcripts[currentIndex], context, lang);
       setCoachDataMap(prev => ({ ...prev, [currentIndex]: response }));
       if (onCoachComplete) {
         onCoachComplete(currentIndex, response);

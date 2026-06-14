@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   selectedSessionId: "lumenSelectedSessionId",
   // Per-question multi-answer session
   sessionAnswers: "lumenSessionAnswers",
+  language: "lumenLanguage",
 } as const;
 
 // ─── IndexedDB helpers (used for large blob storage) ─────────────────────────
@@ -158,6 +159,7 @@ export type SimulationConfig = {
   questionTopic: string;
   questions: string[];
   persona?: "friendly" | "strict" | "stress";
+  language?: "en" | "id";
 };
 
 export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
@@ -165,6 +167,7 @@ export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
   categoryLabel: "SW Engineer",
   questionTopic: "software engineer technical interview debugging system design backend",
   persona: "friendly",
+  language: "en",
   questions: [
     "Tell me about a complex technical problem you solved and the trade-offs you considered.",
     "Walk me through how you would debug a slow production API.",
@@ -173,55 +176,113 @@ export const DEFAULT_SIMULATION_CONFIG: SimulationConfig = {
 };
 
 export const SIMULATION_CATEGORIES: Record<
-  CategoryId,
-  Omit<SimulationConfig, "categoryId">
+  "en" | "id",
+  Record<CategoryId, Omit<SimulationConfig, "categoryId">>
 > = {
-  "sw-engineer": DEFAULT_SIMULATION_CONFIG,
-  "data-analyst": {
-    categoryLabel: "Data Analyst",
-    questionTopic: "data analyst case interview SQL analytics problem solving",
-    questions: [
-      "Tell me about an analysis you ran that changed a product or business decision.",
-      "How would you investigate a sudden drop in weekly active users?",
-      "Describe how you would design a dashboard for leadership to track interview platform health.",
-    ],
+  en: {
+    "sw-engineer": DEFAULT_SIMULATION_CONFIG,
+    "data-analyst": {
+      categoryLabel: "Data Analyst",
+      questionTopic: "data analyst case interview SQL analytics problem solving",
+      questions: [
+        "Tell me about an analysis you ran that changed a product or business decision.",
+        "How would you investigate a sudden drop in weekly active users?",
+        "Describe how you would design a dashboard for leadership to track interview platform health.",
+      ],
+    },
+    "product-mgr": {
+      categoryLabel: "Product Manager",
+      questionTopic: "product manager behavioral interview leadership stakeholder communication",
+      questions: [
+        "Tell me about a product decision where you had to balance user needs and business goals.",
+        "How would you prioritize features for an interview coaching platform with limited engineering time?",
+        "Describe a time you aligned stakeholders who disagreed on product direction.",
+      ],
+    },
+    marketing: {
+      categoryLabel: "Marketing",
+      questionTopic: "marketing case interview campaign strategy communication",
+      questions: [
+        "Tell me about a campaign you planned and how you measured whether it worked.",
+        "How would you position an AI interview coach for university students?",
+        "Describe how you would diagnose a campaign with high clicks but low conversion.",
+      ],
+    },
+    "ui-ux": {
+      categoryLabel: "UI / UX",
+      questionTopic: "UI UX design portfolio interview product thinking usability",
+      questions: [
+        "Walk me through a portfolio project and the user problem you were solving.",
+        "How would you improve the onboarding flow for a first-time interview practice user?",
+        "Tell me about a time usability research changed your design direction.",
+      ],
+    },
+    general: {
+      categoryLabel: "General",
+      questionTopic: "general job interview introduction communication career goals",
+      questions: [
+        "Tell me about yourself and what kind of role you are preparing for.",
+        "Describe a challenge you faced and how you handled it.",
+        "Why are you interested in this opportunity, and what strengths would you bring?",
+      ],
+    },
   },
-  "product-mgr": {
-    categoryLabel: "Product Manager",
-    questionTopic: "product manager behavioral interview leadership stakeholder communication",
-    questions: [
-      "Tell me about a product decision where you had to balance user needs and business goals.",
-      "How would you prioritize features for an interview coaching platform with limited engineering time?",
-      "Describe a time you aligned stakeholders who disagreed on product direction.",
-    ],
-  },
-  marketing: {
-    categoryLabel: "Marketing",
-    questionTopic: "marketing case interview campaign strategy communication",
-    questions: [
-      "Tell me about a campaign you planned and how you measured whether it worked.",
-      "How would you position an AI interview coach for university students?",
-      "Describe how you would diagnose a campaign with high clicks but low conversion.",
-    ],
-  },
-  "ui-ux": {
-    categoryLabel: "UI / UX",
-    questionTopic: "UI UX design portfolio interview product thinking usability",
-    questions: [
-      "Walk me through a portfolio project and the user problem you were solving.",
-      "How would you improve the onboarding flow for a first-time interview practice user?",
-      "Tell me about a time usability research changed your design direction.",
-    ],
-  },
-  general: {
-    categoryLabel: "General",
-    questionTopic: "general job interview introduction communication career goals",
-    questions: [
-      "Tell me about yourself and what kind of role you are preparing for.",
-      "Describe a challenge you faced and how you handled it.",
-      "Why are you interested in this opportunity, and what strengths would you bring?",
-    ],
-  },
+  id: {
+    "sw-engineer": {
+      categoryLabel: "Software Engineer",
+      questionTopic: "wawancara teknis software engineer debugging desain sistem backend",
+      questions: [
+        "Ceritakan masalah teknis kompleks yang pernah Anda selesaikan dan pertimbangan yang Anda ambil.",
+        "Coba jelaskan bagaimana Anda akan men-debug API produksi yang berjalan lambat.",
+        "Bagaimana Anda merancang layanan lalu lintas tinggi yang andal untuk produk penjadwalan wawancara?",
+      ],
+    },
+    "data-analyst": {
+      categoryLabel: "Data Analyst",
+      questionTopic: "wawancara kasus data analyst SQL analitik pemecahan masalah",
+      questions: [
+        "Ceritakan analisis yang Anda lakukan yang berhasil mengubah keputusan produk atau bisnis.",
+        "Bagaimana Anda menyelidiki penurunan tiba-tiba pada pengguna aktif mingguan?",
+        "Jelaskan bagaimana Anda merancang dasbor untuk pimpinan guna melacak metrik kesehatan platform wawancara.",
+      ],
+    },
+    "product-mgr": {
+      categoryLabel: "Product Manager",
+      questionTopic: "wawancara manajer produk kepemimpinan komunikasi pemangku kepentingan",
+      questions: [
+        "Ceritakan tentang keputusan produk di mana Anda harus menyeimbangkan kebutuhan pengguna dan tujuan bisnis.",
+        "Bagaimana Anda memprioritaskan fitur untuk platform wawancara AI dengan waktu pengembangan (engineering time) yang terbatas?",
+        "Gambarkan pengalaman saat Anda menyelaraskan pemangku kepentingan yang berbeda pendapat tentang arah produk.",
+      ],
+    },
+    marketing: {
+      categoryLabel: "Marketing",
+      questionTopic: "wawancara kasus pemasaran strategi kampanye komunikasi",
+      questions: [
+        "Ceritakan tentang kampanye yang Anda rencanakan dan bagaimana Anda mengukur keberhasilannya.",
+        "Bagaimana Anda memposisikan pelatih wawancara AI untuk mahasiswa universitas?",
+        "Jelaskan bagaimana Anda mendiagnosis kampanye dengan banyak klik tetapi konversi rendah.",
+      ],
+    },
+    "ui-ux": {
+      categoryLabel: "UI / UX",
+      questionTopic: "wawancara portofolio desain UI UX pemikiran produk kegunaan",
+      questions: [
+        "Pandu saya melalui proyek portofolio Anda dan masalah pengguna apa yang Anda selesaikan.",
+        "Bagaimana Anda meningkatkan alur pendaftaran (onboarding) untuk pengguna baru pada platform wawancara AI ini?",
+        "Ceritakan tentang suatu waktu ketika riset pengguna (usability research) mengubah arah desain Anda.",
+      ],
+    },
+    general: {
+      categoryLabel: "General",
+      questionTopic: "wawancara kerja umum perkenalan komunikasi tujuan karir",
+      questions: [
+        "Ceritakan tentang diri Anda dan peran apa yang sedang Anda persiapkan.",
+        "Gambarkan tantangan yang pernah Anda hadapi dan bagaimana Anda mengatasinya.",
+        "Mengapa Anda tertarik dengan peluang ini, dan kekuatan apa yang Anda bawa?",
+      ],
+    },
+  }
 };
 
 function _parseSimulationConfig(raw: string | null): SimulationConfig | null {
@@ -239,6 +300,8 @@ function _parseSimulationConfig(raw: string | null): SimulationConfig | null {
         categoryLabel: parsed.categoryLabel,
         questionTopic: parsed.questionTopic,
         questions: parsed.questions,
+        persona: parsed.persona ?? "friendly",
+        language: parsed.language ?? "en",
       } as SimulationConfig;
     }
   } catch {
@@ -578,6 +641,7 @@ export async function analyzeRecording(
     questionTopic: string;
     questionText: string;
     mimeType?: string;
+    language?: string;
   },
 ): Promise<AnalyzeResponse> {
   const mimeType = resolveRecordingMimeType(file.type, options.mimeType);
@@ -607,6 +671,7 @@ export async function analyzeRecording(
   form.append("question_topic", options.questionTopic.trim());
   form.append("job_id", jobId);
   form.append("webhook_url", `${window.location.origin}/api/webhooks/analyze`);
+  form.append("language", options.language ?? "en");
 
   const response = await fetch(`${API_BASE}/api/analyze-async`, {
     method: "POST",

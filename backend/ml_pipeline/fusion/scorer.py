@@ -75,106 +75,113 @@ def build_feedback(
     video_emotion: VideoEmotionResult | None = None,
     content_details: ContentScoreResult | None = None,
     duration_sec: float = 0.0,
+    language: str = "en",
 ) -> dict[str, str]:
     """Membuat saran/masukan (feedback) otomatis berdasarkan performa jawaban kandidat."""
+    is_id = language == "id"
     # 1. Cek durasi terlalu singkat
     if duration_sec < DURATION_FLOOR_SEC:
         short_warning = (
-            f"⚠️ Recording is too short ({duration_sec:.0f}s). "
-            "Scores are unreliable — please record a full answer of at least 30 seconds."
+            f"⚠️ Rekaman terlalu singkat ({duration_sec:.0f}dtk). Skor tidak dapat diandalkan — mohon rekam jawaban penuh setidaknya 30 detik."
+            if is_id else
+            f"⚠️ Recording is too short ({duration_sec:.0f}s). Scores are unreliable — please record a full answer of at least 30 seconds."
         )
         return {"content": short_warning, "delivery": short_warning, "non_verbal": short_warning}
 
     duration_note = ""
     if duration_sec < MIN_DURATION_FULL_SCORE_SEC:
         duration_note = (
-            f" ⚠️ Answer was only {duration_sec:.0f}s — "
-            f"aim for at least {int(MIN_DURATION_FULL_SCORE_SEC)}s for a reliable score."
+            f" ⚠️ Jawaban hanya {duration_sec:.0f}dtk — usahakan setidaknya {int(MIN_DURATION_FULL_SCORE_SEC)}dtk untuk skor yang dapat diandalkan."
+            if is_id else
+            f" ⚠️ Answer was only {duration_sec:.0f}s — aim for at least {int(MIN_DURATION_FULL_SCORE_SEC)}s for a reliable score."
         )
 
     # 2. Feedback Konten (Pesan jawaban)
     preview = transcription_preview[:120] + ("…" if len(transcription_preview) > 120 else "")
     if content_details is not None:
         if content_details.semantic_score < 55:
-            relevance_hint = "Try to answer the specific question more directly."
+            relevance_hint = "Cobalah untuk menjawab pertanyaan dengan lebih spesifik dan langsung." if is_id else "Try to answer the specific question more directly."
         elif content_details.rubric_score < 55:
-            relevance_hint = "Cover more key points from the question (examples, steps, outcomes)."
+            relevance_hint = "Sertakan lebih banyak poin kunci dari pertanyaan (contoh, langkah, hasil)." if is_id else "Cover more key points from the question (examples, steps, outcomes)."
         elif content_details.completeness_score < 55:
             if content_details.behavioral_question:
-                relevance_hint = "Expand using STAR: Situation, Task, Action, and Result with concrete detail."
+                relevance_hint = "Gunakan metode STAR (Situasi, Tugas, Aksi, Hasil) dengan detail konkret." if is_id else "Expand using STAR: Situation, Task, Action, and Result with concrete detail."
             else:
-                relevance_hint = "Give a fuller explanation with examples and clearer structure."
+                relevance_hint = "Berikan penjelasan yang lebih lengkap dengan contoh dan struktur yang jelas." if is_id else "Give a fuller explanation with examples and clearer structure."
         else:
-            relevance_hint = "Good relevance and depth for this question."
+            relevance_hint = "Relevansi dan kedalaman jawaban yang bagus untuk pertanyaan ini." if is_id else "Good relevance and depth for this question."
 
         content_msg = (
             f"{relevance_hint} "
-            f"(relevance {content_details.semantic_score}/100, "
-            f"rubric {content_details.rubric_score}/100, "
-            f"depth {content_details.completeness_score}/100). "
-            f'Preview: "{preview}"'
+            f"({is_id and 'relevansi' or 'relevance'} {content_details.semantic_score}/100, "
+            f"{is_id and 'rubrik' or 'rubric'} {content_details.rubric_score}/100, "
+            f"{is_id and 'kedalaman' or 'depth'} {content_details.completeness_score}/100). "
+            f'{is_id and "Pratinjau" or "Preview"}: "{preview}"'
         )
     elif content_score >= 80:
-        content_msg = f"Strong alignment with the interview question. Preview: \"{preview}\""
+        content_msg = f"{is_id and 'Sangat selaras dengan pertanyaan wawancara.' or 'Strong alignment with the interview question.'} {is_id and 'Pratinjau' or 'Preview'}: \"{preview}\""
     elif content_score >= 60:
-        content_msg = "Answer is somewhat on-topic — add more concrete examples that directly address the interview question."
+        content_msg = is_id and "Jawaban agak sesuai topik — tambahkan contoh konkret yang menjawab pertanyaan wawancara secara langsung." or "Answer is somewhat on-topic — add more concrete examples that directly address the interview question."
     else:
-        content_msg = "Content appears off-topic or too brief. Restructure answers to directly address the interview question."
+        content_msg = is_id and "Konten tampak di luar topik atau terlalu singkat. Susun ulang jawaban untuk menjawab pertanyaan wawancara secara langsung." or "Content appears off-topic or too brief. Restructure answers to directly address the interview question."
 
     # 3. Feedback Penyampaian Suara (Delivery)
     if delivery.filler_rate > 4.0:
-        delivery_msg = (
-            f"Filler word rate is {delivery.filler_rate:.1f}% "
-            f"({delivery.filler_count} detected). Replace fillers with brief pauses."
-        )
+        if is_id:
+            delivery_msg = f"Tingkat kata pengisi adalah {delivery.filler_rate:.1f}% ({delivery.filler_count} terdeteksi). Ganti kata pengisi dengan jeda singkat."
+        else:
+            delivery_msg = f"Filler word rate is {delivery.filler_rate:.1f}% ({delivery.filler_count} detected). Replace fillers with brief pauses."
     elif delivery.wpm > 170:
-        delivery_msg = f"Pacing is fast at {delivery.wpm} WPM — slow down slightly for clarity."
+        delivery_msg = is_id and f"Kecepatan bicara terlalu cepat ({delivery.wpm} WPM) — pelankan sedikit agar lebih jelas." or f"Pacing is fast at {delivery.wpm} WPM — slow down slightly for clarity."
     elif 0 < delivery.wpm < 100:
-        delivery_msg = f"Pacing is slow at {delivery.wpm} WPM — aim closer to 130–150 WPM."
+        delivery_msg = is_id and f"Kecepatan bicara terlalu lambat ({delivery.wpm} WPM) — targetkan 130–150 WPM." or f"Pacing is slow at {delivery.wpm} WPM — aim closer to 130–150 WPM."
     else:
-        delivery_msg = (
-            f"Solid delivery at {delivery.wpm} WPM with {delivery.filler_rate:.1f}% fillers. "
-            f"Avg pause {delivery.avg_pause_sec}s."
-        )
+        if is_id:
+            delivery_msg = f"Penyampaian suara yang baik di kecepatan {delivery.wpm} WPM dengan {delivery.filler_rate:.1f}% kata pengisi. Rata-rata jeda {delivery.avg_pause_sec}dtk."
+        else:
+            delivery_msg = f"Solid delivery at {delivery.wpm} WPM with {delivery.filler_rate:.1f}% fillers. Avg pause {delivery.avg_pause_sec}s."
 
     if emotion is not None and emotion.chunks_analyzed > 0:
         stability_pct = int(emotion.stability_score * 100)
         if emotion.nervous_rate >= 0.4:
-            delivery_msg += (
-                f" Voice tone sounds tense ({emotion.dominant_emotion}, "
-                f"{int(emotion.nervous_rate * 100)}% nervous segments)."
-            )
+            if is_id:
+                delivery_msg += f" Nada suara terdengar tegang ({emotion.dominant_emotion}, {int(emotion.nervous_rate * 100)}% segmen tegang)."
+            else:
+                delivery_msg += f" Voice tone sounds tense ({emotion.dominant_emotion}, {int(emotion.nervous_rate * 100)}% nervous segments)."
         elif emotion.emotion_score >= 80:
-            delivery_msg += (
-                f" Voice tone is steady ({emotion.dominant_emotion}, "
-                f"{stability_pct}% stability)."
-            )
+            if is_id:
+                delivery_msg += f" Nada suara stabil ({emotion.dominant_emotion}, stabilitas {stability_pct}%)."
+            else:
+                delivery_msg += f" Voice tone is steady ({emotion.dominant_emotion}, {stability_pct}% stability)."
         else:
-            delivery_msg += f" Voice emotion score {emotion.emotion_score}/100 ({emotion.dominant_emotion})."
+            if is_id:
+                delivery_msg += f" Skor emosi suara {emotion.emotion_score}/100 ({emotion.dominant_emotion})."
+            else:
+                delivery_msg += f" Voice emotion score {emotion.emotion_score}/100 ({emotion.dominant_emotion})."
 
     # 4. Feedback Visual/Non-Verbal
     if video_emotion is not None and video_emotion.frames_analyzed > 0:
         stability_pct = int(video_emotion.stability_score * 100)
         if video_emotion.nervous_rate >= 0.4:
-            non_verbal_msg = (
-                f"Facial expression looks tense ({video_emotion.dominant_emotion}, "
-                f"{int(video_emotion.nervous_rate * 100)}% nervous frames). "
-                f"Aim for a steadier, more neutral expression."
-            )
+            if is_id:
+                non_verbal_msg = f"Ekspresi wajah terlihat tegang ({video_emotion.dominant_emotion}, {int(video_emotion.nervous_rate * 100)}% frame tegang). Usahakan ekspresi yang lebih stabil dan netral."
+            else:
+                non_verbal_msg = f"Facial expression looks tense ({video_emotion.dominant_emotion}, {int(video_emotion.nervous_rate * 100)}% nervous frames). Aim for a steadier, more neutral expression."
         elif non_verbal_score >= 80:
-            non_verbal_msg = (
-                f"Confident facial expression ({video_emotion.dominant_emotion}, "
-                f"{stability_pct}% stability)."
-            )
+            if is_id:
+                non_verbal_msg = f"Ekspresi wajah percaya diri ({video_emotion.dominant_emotion}, stabilitas {stability_pct}%)."
+            else:
+                non_verbal_msg = f"Confident facial expression ({video_emotion.dominant_emotion}, {stability_pct}% stability)."
         else:
-            non_verbal_msg = (
-                f"Facial emotion score {non_verbal_score}/100 ({video_emotion.dominant_emotion}, {stability_pct}% stability)."
-            )
+            if is_id:
+                non_verbal_msg = f"Skor emosi wajah {non_verbal_score}/100 ({video_emotion.dominant_emotion}, stabilitas {stability_pct}%)."
+            else:
+                non_verbal_msg = f"Facial emotion score {non_verbal_score}/100 ({video_emotion.dominant_emotion}, {stability_pct}% stability)."
     else:
-        non_verbal_msg = (
-            "No face detected consistently in the video — make sure your face is "
-            "visible and well-lit throughout the recording."
-        )
+        if is_id:
+            non_verbal_msg = "Wajah tidak terdeteksi secara konsisten — pastikan wajah Anda terlihat dan cukup cahaya selama perekaman."
+        else:
+            non_verbal_msg = "No face detected consistently in the video — make sure your face is visible and well-lit throughout the recording."
 
     # Menambahkan catatan durasi ke seluruh aspek feedback jika durasinya kurang
     if duration_note:
@@ -197,6 +204,7 @@ def run_fusion(
     video_emotion: VideoEmotionResult | None = None,
     blended_delivery_score: int | None = None,
     content_details: ContentScoreResult | None = None,
+    language: str = "en",
 ) -> FusionResult:
     """Mengintegrasikan seluruh skor dan menyusun feedback final."""
     delivery_score = (
@@ -227,15 +235,17 @@ def run_fusion(
         delivery_score = int(round(delivery_score * penalty_factor))
         non_verbal_score = int(round(non_verbal_score * penalty_factor))
 
+    # 4. Generate Feedback
     feedback = build_feedback(
         content_score,
         delivery,
         non_verbal_score,
-        transcription,
+        transcription_preview=transcription,
         emotion=emotion,
         video_emotion=video_emotion,
         content_details=content_details,
         duration_sec=delivery.duration_sec,
+        language=language,
     )
 
     return FusionResult(
