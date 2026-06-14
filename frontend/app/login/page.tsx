@@ -82,8 +82,8 @@ export default function LoginPage() {
                 "/testi-user/ardava.png",
                 "/testi-user/dian.png",
                 "/testi-user/emir.jpeg",
-                "/testi-user/nauval.jfif",
-                "/testi-user/Jewdomelvin.jfif"
+                "/testi-user/nauval.jpg",
+                "/testi-user/Jewdomelvin.jpg"
               ].map((src, i) => (
                 <img key={i} src={src} alt="User" className="size-6 rounded-full border-2 border-white object-cover" />
               ))}
