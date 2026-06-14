@@ -99,51 +99,68 @@ function ScoreCard({ cat }: { cat: ScoreCategory }) {
   );
 }
 
-function buildCategories(result: AnalyzeResponse): ScoreCategory[] {
+function buildCategories(result: AnalyzeResponse, lang: string): ScoreCategory[] {
   const dm = result.delivery_metrics;
   const cm = result.content_metrics;
-  const contentDetail = cm
+  
+  const contentDetailId = cm 
+    ? `${result.feedback.content} (relevansi ${cm.semantic_score} · rubrik ${cm.rubric_score} · kedalaman ${cm.completeness_score})`
+    : result.feedback.content;
+  const contentDetailEn = cm
     ? `${result.feedback.content} (relevance ${cm.semantic_score} · rubric ${cm.rubric_score} · depth ${cm.completeness_score})`
     : result.feedback.content;
+    
+  const deliveryDetailId = `${result.feedback.delivery} (${dm.wpm} KPM · ${dm.filler_rate}% jeda · rata-rata diam ${dm.avg_pause_sec}d)`;
+  const deliveryDetailEn = `${result.feedback.delivery} (${dm.wpm} WPM · ${dm.filler_rate}% fillers · avg pause ${dm.avg_pause_sec}s)`;
 
   return [
     {
       id: "content",
-      tag: "Content Quality",
+      tag: lang === "id" ? "Kualitas Konten" : "Content Quality",
       weight: "40%",
-      title: "What you said",
+      title: lang === "id" ? "Apa yang Anda katakan" : "What you said",
       score: result.content_score,
-      description: contentDetail,
-      barColor: "#4F46E5", // Consistent Indigo 600
+      description: lang === "id" ? contentDetailId : contentDetailEn,
+      barColor: "#4F46E5",
       tagBg: "#EEF2FF",
       tagColor: "#4338CA",
     },
     {
       id: "delivery",
-      tag: "Delivery & Fluency",
+      tag: lang === "id" ? "Penyampaian & Kelancaran" : "Delivery & Fluency",
       weight: "30%",
-      title: "How you said it",
+      title: lang === "id" ? "Bagaimana Anda mengatakannya" : "How you said it",
       score: result.delivery_score,
-      description: `${result.feedback.delivery} (${dm.wpm} WPM · ${dm.filler_rate}% fillers · avg pause ${dm.avg_pause_sec}s)`,
-      barColor: "#4F46E5", // Consistent Indigo 600
+      description: lang === "id" ? deliveryDetailId : deliveryDetailEn,
+      barColor: "#4F46E5",
       tagBg: "#EEF2FF",
       tagColor: "#4338CA",
     },
     {
       id: "nonverbal",
-      tag: "Non-Verbal Presence",
+      tag: lang === "id" ? "Kehadiran Non-Verbal" : "Non-Verbal Presence",
       weight: "30%",
-      title: "How you appeared",
+      title: lang === "id" ? "Bagaimana penampilan Anda" : "How you appeared",
       score: result.non_verbal_score,
       description: result.feedback.non_verbal,
-      barColor: "#4F46E5", // Consistent Indigo 600
+      barColor: "#4F46E5",
       tagBg: "#EEF2FF",
       tagColor: "#4338CA",
     },
   ];
 }
 
-function summaryHeadline(score: number): { line1: string; highlight: string; line2: string } {
+function summaryHeadline(score: number, lang: string): { line1: string; highlight: string; line2: string } {
+  if (lang === "id") {
+    if (score >= 80) {
+      return { line1: "Penampilan Anda sangat", highlight: "matang dan siap", line2: "." };
+    }
+    if (score >= 65) {
+      return { line1: "Penampilan Anda cukup", highlight: "mampu dan terstruktur", line2: "dengan ruang untuk peningkatan." };
+    }
+    return { line1: "Anda memiliki", highlight: "dasar yang kuat", line2: "untuk dikembangkan lebih lanjut." };
+  }
+
   if (score >= 80) {
     return { line1: "You came across", highlight: "thoughtful and prepared", line2: "." };
   }
@@ -241,35 +258,38 @@ export default function ResultPage() {
 
 
 
+  const lang = simulationConfig.language || "en";
+
   if (!result) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-neutral-50 px-8 font-sans">
         <p className="text-[12px] font-semibold uppercase tracking-wider text-neutral-400">
-          No analysis result found
+          {lang === "id" ? "Hasil analisis tidak ditemukan" : "No analysis result found"}
         </p>
         <p className="max-w-md text-center text-[14px] text-neutral-500 font-light">
-          Complete a recording and wait for analysis to finish, or run a new simulation.
+          {lang === "id" ? "Selesaikan rekaman dan tunggu analisis selesai, atau jalankan simulasi baru." : "Complete a recording and wait for analysis to finish, or run a new simulation."}
         </p>
         <div className="flex gap-3 mt-2">
           <Link
-            href="/simulation/setup"
+            href="/dashboard"
+            onClick={() => localStorage.setItem("lumenSetupOpen", "true")}
             className="rounded-full bg-neutral-900 px-6 py-2.5 text-[13px] font-medium text-white hover:bg-neutral-800 transition-colors"
           >
-            New simulation
+            {lang === "id" ? "Simulasi baru" : "New simulation"}
           </Link>
           <Link
             href="/dashboard"
             className="rounded-full border border-neutral-200 bg-white px-6 py-2.5 text-[13px] font-medium text-neutral-700 hover:bg-neutral-50 transition-colors"
           >
-            Dashboard
+            {lang === "id" ? "Beranda" : "Dashboard"}
           </Link>
         </div>
       </div>
     );
   }
 
-  const categories = buildCategories(result);
-  const headline = summaryHeadline(result.final_score);
+  const categories = buildCategories(result, lang);
+  const headline = summaryHeadline(result.final_score, lang);
   const durationLabel = formatDuration(result.delivery_metrics.duration_sec);
 
   return (
@@ -316,7 +336,7 @@ export default function ResultPage() {
                 <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-[12px] font-medium text-white/90 border border-white/10 backdrop-blur-md">
                   <span>{simulationConfig.categoryLabel}</span>
                   <span className="text-white/30">&bull;</span>
-                  <span>{simulationConfig.questions.length} Questions</span>
+                  <span>{simulationConfig.questions?.length || 3} {lang === "id" ? "Pertanyaan" : "Questions"}</span>
                   <span className="text-white/30">&bull;</span>
                   <span>{durationLabel}</span>
                 </div>
@@ -332,7 +352,7 @@ export default function ResultPage() {
                   {result.final_score}
                 </span>
                 <span className="mt-3 text-[12px] font-semibold uppercase tracking-widest text-white/60">
-                  Overall Score
+                  {lang === "id" ? "Skor Keseluruhan" : "Overall Score"}
                 </span>
                 <span className="mt-4 inline-flex items-center rounded-full bg-emerald-500/20 border border-emerald-500/30 px-3.5 py-1.5 text-[12px] font-medium text-emerald-300">
                   {performanceLabel(result.final_score)}
@@ -345,10 +365,10 @@ export default function ResultPage() {
           <section id="breakdown" className="w-full">
         <div className="mb-8 flex items-baseline justify-between border-b border-neutral-200 pb-4">
           <h2 className="text-[18px] font-bold tracking-tight text-neutral-900">
-            Score Breakdown
+            {lang === "id" ? "Rincian Skor" : "Score Breakdown"}
           </h2>
           <span className="text-[12px] text-neutral-400 font-light">
-            Weighted Fusion (40% Content / 30% Delivery / 30% Non-Verbal)
+            {lang === "id" ? "Penggabungan Bobot (40% Konten / 30% Penyampaian / 30% Non-Verbal)" : "Weighted Fusion (40% Content / 30% Delivery / 30% Non-Verbal)"}
           </span>
         </div>
 
@@ -368,13 +388,14 @@ export default function ResultPage() {
           feedback={result.feedback}
           cachedInsight={result.feedback.overall_insight}
           onComplete={handleInsightComplete}
+          lang={lang}
         />
 
         {/* Transcript Box */}
         {result.transcription && (
           <div className="mt-10 flex flex-col gap-5">
             <h4 className="text-[14px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-200 pb-2">
-              Per-Question Transcript
+              {lang === "id" ? "Transkrip Per-Pertanyaan" : "Per-Question Transcript"}
             </h4>
             
             {(() => {
@@ -406,6 +427,7 @@ export default function ResultPage() {
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   cachedCoachData={result.feedback.coach_data as any}
                   onCoachComplete={handleCoachComplete}
+                  lang={lang}
                 />
               );
             })()}
@@ -418,19 +440,20 @@ export default function ResultPage() {
             href="/dashboard"
             className="rounded-full border border-neutral-200 bg-white px-6 py-3 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shadow-sm"
           >
-            &larr; Back to dashboard
+            {lang === "id" ? "\u2190 Kembali ke beranda" : "\u2190 Back to dashboard"}
           </Link>
           <Link
             href="/report-cards"
             className="rounded-full border border-neutral-200 bg-white px-6 py-3 text-[13px] font-semibold text-neutral-700 hover:bg-neutral-50 transition-colors shadow-sm"
           >
-            View report cards
+            {lang === "id" ? "Lihat rapor" : "View report cards"}
           </Link>
           <Link
-            href="/simulation/setup"
+            href="/dashboard"
+            onClick={() => localStorage.setItem("lumenSetupOpen", "true")}
             className="rounded-full bg-neutral-900 px-6 py-3 text-[13px] font-semibold text-white hover:bg-neutral-800 transition-colors shadow-sm"
           >
-            Start new simulation
+            {lang === "id" ? "Mulai simulasi baru" : "Start new simulation"}
           </Link>
         </div>
       </section>

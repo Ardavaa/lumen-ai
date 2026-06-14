@@ -185,8 +185,12 @@ export default function RecordingPage() {
 
   const fetchAttempted = useRef(false);
 
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => setIsHydrated(true), []);
+
   useEffect(() => {
     async function getQuestions() {
+      if (!isHydrated) return;
       if (fetchAttempted.current) return;
       fetchAttempted.current = true;
       try {
@@ -214,7 +218,7 @@ export default function RecordingPage() {
     if (phase === "generating") {
       getQuestions();
     }
-  }, [config.categoryId, config.categoryLabel, config.questionTopic, config.questions, config.persona, config.language, phase]);
+  }, [isHydrated, config.categoryId, config.categoryLabel, config.questionTopic, config.questions, config.persona, config.language, phase]);
 
   // Init Speech Recognition
   useEffect(() => {
@@ -225,7 +229,7 @@ export default function RecordingPage() {
         recognitionRef.current = new SpeechRecognition();
         recognitionRef.current.continuous = true;
         recognitionRef.current.interimResults = true;
-        recognitionRef.current.lang = "en-US";
+        recognitionRef.current.lang = config.language === "id" ? "id-ID" : "en-US";
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         recognitionRef.current.onresult = (event: any) => {
           let finalTranscript = "";
@@ -562,7 +566,8 @@ export default function RecordingPage() {
                   config.questionTopic, 
                   config.persona || "friendly",
                   qText,
-                  finalTranscript
+                  finalTranscript,
+                  config.language || "en"
                 );
                 if (followUp) {
                    setQuestions(prev => {
@@ -786,9 +791,13 @@ export default function RecordingPage() {
                       </svg>
                     </div>
                     <div className="flex flex-col items-center gap-2">
-                      <h3 className="text-xl font-bold tracking-tight text-white">Generating Questions</h3>
+                      <h3 className="text-xl font-bold tracking-tight text-white">
+                        {config.language === "id" ? "Menyusun Pertanyaan" : "Generating Questions"}
+                      </h3>
                       <p className="text-sm font-medium text-slate-400 max-w-sm text-center">
-                        Gemma is analyzing the {config.categoryLabel} role and preparing tailored interview questions...
+                        {config.language === "id" 
+                          ? `Gemma sedang menganalisis peran ${config.categoryLabel} dan menyiapkan pertanyaan wawancara khusus...`
+                          : `Gemma is analyzing the ${config.categoryLabel} role and preparing tailored interview questions...`}
                       </p>
                     </div>
                   </div>
@@ -799,14 +808,14 @@ export default function RecordingPage() {
               {phase === "countdown" && !mediaError && (
                 <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/90 backdrop-blur-sm animate-fade-in">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[3px] text-white/40">
-                    Q{currentQ} of {questions.length} · Starting in
+                    Q{currentQ} {config.language === "id" ? "dari" : "of"} {questions.length} &middot; {config.language === "id" ? "Mulai dalam" : "Starting in"}
                   </p>
                   <div
                     key={countdown}
                     className="text-[96px] font-black leading-none tabular-nums text-white"
                     style={{ animation: "countdownPop 0.9s ease-out both" }}
                   >
-                    {countdown === 0 ? "GO" : countdown}
+                    {countdown === 0 ? (config.language === "id" ? "MULAI" : "GO") : countdown}
                   </div>
                   <p className="mt-4 max-w-[400px] text-center text-sm leading-relaxed text-white/60 px-4">
                     {questionText}
@@ -823,13 +832,16 @@ export default function RecordingPage() {
                     </svg>
                   </div>
                   <div className="text-center px-6 animate-scale-up">
-                    <p className="text-xs font-semibold uppercase tracking-[3px] text-emerald-500">Answer Saved</p>
+                    <p className="text-xs font-semibold uppercase tracking-[3px] text-emerald-500">{config.language === "id" ? "Jawaban Disimpan" : "Answer Saved"}</p>
                     <p className="mt-1 text-lg font-bold text-white">
-                      Ready for Question {currentQ}?
+                      {config.language === "id" ? `Siap untuk Pertanyaan ${currentQ}?` : `Ready for Question ${currentQ}?`}
                     </p>
                     <p className="mt-2 max-w-[400px] text-xs leading-relaxed text-white/40">
                       {isGeneratingFollowUp ? (
-                        <span className="italic text-indigo-300">Preparing follow-up question...</span>
+                        <span className="italic text-indigo-300 font-semibold flex items-center justify-center gap-2">
+                          <span className="animate-spin rounded-full h-3 w-3 border-2 border-indigo-400 border-t-transparent inline-block" />
+                          {config.language === "id" ? "AI sedang menyusun pertanyaan lanjutan..." : "AI is generating follow-up question..."}
+                        </span>
                       ) : (
                         questions[currentQ - 1]
                       )}
@@ -848,11 +860,11 @@ export default function RecordingPage() {
                     {isGeneratingFollowUp ? (
                       <>
                         <span className="animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent inline-block mr-1" />
-                        Generating Question...
+                        {config.language === "id" ? "Menyusun Pertanyaan..." : "Generating Question..."}
                       </>
                     ) : (
                       <>
-                        Start Question {currentQ} <IconArrowRight />
+                        {config.language === "id" ? `Mulai Pertanyaan ${currentQ}` : `Start Question ${currentQ}`} <IconArrowRight />
                       </>
                     )}
                   </button>

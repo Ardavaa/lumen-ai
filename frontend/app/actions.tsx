@@ -58,15 +58,29 @@ export async function generateInterviewQuestions(
   persona: "friendly" | "strict" | "stress" = "friendly",
   language: string = "en"
 ): Promise<string[]> {
-  const personas = {
+  const personasEn = {
     friendly: "You are a friendly, supportive, and relaxed HR interviewer. You focus on culture fit, team collaboration, and bringing out the best in the candidate.",
     strict: "You are a strict, direct, and highly technical Lead Engineer interviewer. You focus on precise details, technical depth, and efficiency.",
     stress: "You are a stress-tester interviewer. You are skeptical, pressure-inducing, and challenging. Your goal is to see how the candidate handles difficult situations."
   };
 
-  const systemPrompt = `You are an expert interviewer. ${personas[persona]} Each question must be short, direct, and distinct. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text. All your questions must be written in ${language === 'id' ? 'Indonesian (Bahasa Indonesia)' : 'English'}.`;
+  const personasId = {
+    friendly: "Anda adalah pewawancara HR yang ramah, suportif, dan santai. Anda fokus pada kecocokan budaya, kolaborasi tim, dan memunculkan yang terbaik dari kandidat.",
+    strict: "Anda adalah pewawancara Lead Engineer yang ketat, blak-blakan, dan sangat teknis. Anda fokus pada detail yang presisi, kedalaman teknis, dan efisiensi.",
+    stress: "Anda adalah pewawancara penguji-tekanan (stress-tester). Anda skeptis, memberikan tekanan, dan menantang. Tujuan Anda adalah melihat bagaimana kandidat menangani situasi sulit."
+  };
 
-  const schema = z.object({ questions: z.array(z.string()) });
+  const systemPrompt = language === 'id'
+    ? `Anda adalah pewawancara ahli. ${personasId[persona]} Setiap pertanyaan harus singkat, langsung, dan berbeda. PENTING: Anda hanya boleh merespons dengan JSON mentah yang valid. JANGAN gunakan blok kode markdown (tanpa \`\`\`json). JANGAN sertakan teks pengantar atau penutup. Semua pertanyaan Anda HARUS ditulis murni dalam Bahasa Indonesia.`
+    : `You are an expert interviewer. ${personasEn[persona]} Each question must be short, direct, and distinct. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text. All your questions must be written in English.`;
+
+  const schema = z.object({ 
+    questions: z.array(z.string().describe(language === 'id' ? 'Pertanyaan wawancara dalam Bahasa Indonesia.' : 'The interview question in English.')) 
+  });
+
+  const promptText = language === 'id'
+    ? `Buat TEPAT ${count} pertanyaan wawancara untuk kandidat yang melamar peran "${role}" di perusahaan "${company}".\nPertanyaan harus berupa campuran perilaku dan teknis/spesifik peran, yang relevan dengan posisi tersebut.\nKRITIKAL: SETIAP PERTANYAAN dalam array HARUS sepenuhnya dalam Bahasa Indonesia. JANGAN gunakan bahasa Inggris sama sekali.`
+    : `Generate EXACTLY ${count} discrete interview questions for a candidate applying for the role of "${role}" at "${company}".\nThe questions should be a mix of behavioral and technical/role-specific, directly relevant to the role and the company's domain.\nCRITICAL: EVERY SINGLE QUESTION in the array MUST be completely translated into English.`;
 
   const result = await generateObject({
     model: google("gemma-4-31b-it"),
@@ -74,8 +88,7 @@ export async function generateInterviewQuestions(
     maxOutputTokens: 500,
     temperature: 0.7,
     system: systemPrompt,
-    prompt: `Generate EXACTLY ${count} discrete interview questions for a candidate applying for the role of "${role}" at "${company}". 
-    The questions should be a mix of behavioral and technical/role-specific, directly relevant to the role and the company's domain. The generated questions MUST be in ${language === 'id' ? 'Indonesian (Bahasa Indonesia)' : 'English'}.`,
+    prompt: promptText,
   });
 
   return result.object.questions;
@@ -89,15 +102,29 @@ export async function generateFollowUpQuestion(
   candidateAnswer: string,
   language: string = "en"
 ): Promise<string> {
-  const personas = {
+  const personasEn = {
     friendly: "You are a friendly, supportive, and relaxed HR interviewer. You focus on culture fit, team collaboration, and bringing out the best in the candidate.",
     strict: "You are a strict, direct, and highly technical Lead Engineer interviewer. You focus on precise details, technical depth, and efficiency.",
     stress: "You are a stress-tester interviewer. You are skeptical, pressure-inducing, and challenging. Your goal is to see how the candidate handles difficult situations."
   };
 
-  const systemPrompt = `You are an expert interviewer. ${personas[persona]} You must ask a single short, direct, and highly relevant follow-up question based on the candidate's answer. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text. The question must be generated in ${language === 'id' ? 'Indonesian (Bahasa Indonesia)' : 'English'}.`;
+  const personasId = {
+    friendly: "Anda adalah pewawancara HR yang ramah, suportif, dan santai. Anda fokus pada kecocokan budaya, kolaborasi tim, dan memunculkan yang terbaik dari kandidat.",
+    strict: "Anda adalah pewawancara Lead Engineer yang ketat, blak-blakan, dan sangat teknis. Anda fokus pada detail yang presisi, kedalaman teknis, dan efisiensi.",
+    stress: "Anda adalah pewawancara penguji-tekanan (stress-tester). Anda skeptis, memberikan tekanan, dan menantang. Tujuan Anda adalah melihat bagaimana kandidat menangani situasi sulit."
+  };
 
-  const schema = z.object({ question: z.string() });
+  const systemPrompt = language === 'id'
+    ? `Anda adalah pewawancara ahli. ${personasId[persona]} Anda harus menanyakan satu pertanyaan lanjutan yang singkat, langsung, dan sangat relevan berdasarkan jawaban kandidat. PENTING: Anda hanya boleh merespons dengan JSON mentah yang valid. JANGAN gunakan blok kode markdown (tanpa \`\`\`json). JANGAN sertakan teks pengantar atau penutup. Pertanyaan harus dibuat murni dalam Bahasa Indonesia.`
+    : `You are an expert interviewer. ${personasEn[persona]} You must ask a single short, direct, and highly relevant follow-up question based on the candidate's answer. IMPORTANT: You must respond ONLY with raw, valid JSON. Do NOT wrap your response in markdown code blocks (no \`\`\`json). Do NOT include any introductory or concluding text. The question must be generated in English.`;
+
+  const schema = z.object({ 
+    question: z.string().describe(language === 'id' ? 'Pertanyaan lanjutan dalam Bahasa Indonesia.' : 'The follow-up question in English.') 
+  });
+
+  const promptText = language === 'id'
+    ? `Kandidat melamar posisi "${role}" di perusahaan "${company}".\n\nAnda sebelumnya bertanya: "${previousQuestion}"\nKandidat menjawab: "${candidateAnswer}"\n\nBuat TEPAT SATU pertanyaan lanjutan yang ringkas. Pertanyaan tersebut harus menggali lebih dalam apa yang baru saja mereka katakan, menantang poin yang mereka buat, atau meminta contoh spesifik berdasarkan jawaban mereka. Jangan beri tanggapan seperti "Jawaban yang bagus" atau sejenisnya.\nKRITIKAL: Pertanyaan yang dihasilkan HARUS sepenuhnya dalam Bahasa Indonesia. JANGAN gunakan bahasa Inggris.`
+    : `The candidate is applying for "${role}" at "${company}".\n\nYou previously asked: "${previousQuestion}"\nThe candidate answered: "${candidateAnswer}"\n\nGenerate EXACTLY ONE concise follow-up question. The question should dig deeper into what they just said, challenge a point they made, or ask for a specific example based on their answer. Do not acknowledge their answer with "Good answer" or similar.\nCRITICAL: The generated question MUST be completely translated into English.`;
 
   const result = await generateObject({
     model: google("gemma-4-31b-it"),
@@ -105,12 +132,7 @@ export async function generateFollowUpQuestion(
     maxOutputTokens: 200,
     temperature: 0.5,
     system: systemPrompt,
-    prompt: `The candidate is applying for "${role}" at "${company}".
-    
-    You previously asked: "${previousQuestion}"
-    The candidate answered: "${candidateAnswer}"
-    
-    Generate EXACTLY ONE concise follow-up question. The question should dig deeper into what they just said, challenge a point they made, or ask for a specific example based on their answer. Do not acknowledge their answer with "Good answer" or similar.`,
+    prompt: promptText,
   });
 
   return result.object.question;

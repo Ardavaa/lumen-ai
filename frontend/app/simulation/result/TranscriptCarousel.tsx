@@ -33,51 +33,51 @@ function HighlightedTranscript({ text }: { text: string }) {
 
 // ─── Local UI Components ───────────────────────────────────────────────
 
-function RewriteSuggestion({ original, improved, reasoning }: { original: string; improved: string; reasoning: string }) {
+function RewriteSuggestion({ original, improved, reasoning, lang }: { original: string; improved: string; reasoning: string; lang?: string }) {
   return (
     <div className="mt-4 flex flex-col gap-3 rounded-[20px] border border-indigo-100 bg-indigo-50/50 p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-1">
         <div className="flex size-6 items-center justify-center rounded-full bg-indigo-600 text-white">
           <AppIcon name="ai" className="size-3.5" />
         </div>
-        <h4 className="text-[13px] font-bold uppercase tracking-wider text-indigo-900">Better Phrasing</h4>
+        <h4 className="text-[13px] font-bold uppercase tracking-wider text-indigo-900">{lang === "id" ? "Saran Frasa Lebih Baik" : "Better Phrasing"}</h4>
       </div>
       
       <div className="grid md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-4">
-          <span className="text-[10px] font-bold uppercase text-rose-500 tracking-wider mb-2 block">You said</span>
+          <span className="text-[10px] font-bold uppercase text-rose-500 tracking-wider mb-2 block">{lang === "id" ? "Anda bilang" : "You said"}</span>
           <p className="text-[14px] text-rose-900 font-light leading-relaxed strike line-through opacity-70">
-            {original || "(AI could not extract the original text)"}
+            {original || (lang === "id" ? "(AI tidak dapat mengekstrak teks asli)" : "(AI could not extract the original text)")}
           </p>
         </div>
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-emerald-200/50 to-transparent blur-2xl rounded-full" />
-          <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-wider mb-2 block">Suggested</span>
+          <span className="text-[10px] font-bold uppercase text-emerald-600 tracking-wider mb-2 block">{lang === "id" ? "Disarankan" : "Suggested"}</span>
           <p className="text-[14px] text-emerald-950 font-medium leading-relaxed relative z-10">
             {improved}
           </p>
         </div>
       </div>
       <p className="text-[13px] text-indigo-700 leading-relaxed italic mt-2">
-        <span className="font-semibold not-italic">Why this works:</span> {reasoning}
+        <span className="font-semibold not-italic">{lang === "id" ? "Mengapa ini lebih baik:" : "Why this works:"}</span> {reasoning}
       </p>
     </div>
   );
 }
 
-function CoachingInsights({ strengths, weaknesses, tips }: { strengths: string[], weaknesses: string[], tips: string[] }) {
+function CoachingInsights({ strengths, weaknesses, tips, lang }: { strengths: string[], weaknesses: string[], tips: string[], lang?: string }) {
   return (
     <div className="mt-4 flex flex-col gap-4 rounded-[20px] border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center gap-2 mb-2 border-b border-slate-100 pb-3">
         <div className="flex size-6 items-center justify-center rounded-full bg-amber-100 text-amber-600">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         </div>
-        <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-900">Coach&apos;s Takeaway</h4>
+        <h4 className="text-[13px] font-bold uppercase tracking-wider text-slate-900">{lang === "id" ? "Pesan Pelatih" : "Coach's Takeaway"}</h4>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <h5 className="text-[12px] font-bold uppercase text-emerald-600 tracking-wider mb-3">Strengths</h5>
+          <h5 className="text-[12px] font-bold uppercase text-emerald-600 tracking-wider mb-3">{lang === "id" ? "Kekuatan" : "Strengths"}</h5>
           <ul className="flex flex-col gap-2">
             {strengths.map((s, i) => (
               <li key={i} className="flex items-start gap-2 text-[14px] text-slate-600 font-light">
@@ -88,7 +88,7 @@ function CoachingInsights({ strengths, weaknesses, tips }: { strengths: string[]
           </ul>
         </div>
         <div>
-          <h5 className="text-[12px] font-bold uppercase text-rose-500 tracking-wider mb-3">Areas to Improve</h5>
+          <h5 className="text-[12px] font-bold uppercase text-rose-500 tracking-wider mb-3">{lang === "id" ? "Area Peningkatan" : "Areas to Improve"}</h5>
           <ul className="flex flex-col gap-2">
             {weaknesses.map((w, i) => (
               <li key={i} className="flex items-start gap-2 text-[14px] text-slate-600 font-light">
@@ -102,7 +102,7 @@ function CoachingInsights({ strengths, weaknesses, tips }: { strengths: string[]
 
       {tips.length > 0 && (
         <div className="mt-2 rounded-xl bg-slate-50 p-4 border border-slate-100">
-          <h5 className="text-[11px] font-bold uppercase text-slate-500 tracking-wider mb-2">Pro Tip</h5>
+          <h5 className="text-[11px] font-bold uppercase text-slate-500 tracking-wider mb-2">{lang === "id" ? "Tips Pro" : "Pro Tip"}</h5>
           <p className="text-[13px] text-slate-700 leading-relaxed font-light">{tips[0]}</p>
         </div>
       )}
@@ -129,6 +129,7 @@ export function TranscriptCarousel({
   };
   cachedCoachData?: Record<number, CoachResult>;
   onCoachComplete?: (index: number, result: CoachResult) => void;
+  lang?: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -161,8 +162,8 @@ export function TranscriptCarousel({
     setLoadingMap(prev => ({ ...prev, [currentIndex]: true }));
     setErrorMap(prev => ({ ...prev, [currentIndex]: "" }));
     try {
-      const lang = typeof window !== "undefined" ? localStorage.getItem("lumenLanguage") || "en" : "en";
-      const response = await askAICoach(questions[currentIndex], transcripts[currentIndex], context, lang);
+      const activeLang = lang || (typeof window !== "undefined" ? localStorage.getItem("lumenLanguage") || "en" : "en");
+      const response = await askAICoach(questions[currentIndex], transcripts[currentIndex], context, activeLang);
       setCoachDataMap(prev => ({ ...prev, [currentIndex]: response }));
       if (onCoachComplete) {
         onCoachComplete(currentIndex, response);
@@ -180,7 +181,7 @@ export function TranscriptCarousel({
   const errorMsg = errorMap[currentIndex];
 
   const currentQuestion = questions[currentIndex];
-  const currentTranscript = transcripts[currentIndex] || "No distinct answer recorded for this question.";
+  const currentTranscript = transcripts[currentIndex] || (lang === "id" ? "Tidak ada jawaban jelas yang terekam untuk pertanyaan ini." : "No distinct answer recorded for this question.");
 
   return (
     <div className="border border-slate-200 bg-white rounded-[24px] p-6 shadow-sm relative overflow-hidden">
@@ -192,7 +193,7 @@ export function TranscriptCarousel({
             Q{currentIndex + 1}
           </span>
           <span className="text-[12px] font-bold tracking-widest text-slate-400 uppercase">
-            of {questions.length}
+            {lang === "id" ? "dari" : "of"} {questions.length}
           </span>
         </div>
         
@@ -242,7 +243,7 @@ export function TranscriptCarousel({
             </p>
             
             <div className="mt-6 pt-6 border-t border-slate-200/60 pl-6 flex items-center justify-between">
-              <span className="text-[12px] font-medium text-slate-400">Your Answer</span>
+              <span className="text-[12px] font-medium text-slate-400">{lang === "id" ? "Jawaban Anda" : "Your Answer"}</span>
               
               {!currentCoachData && !isLoading && (
                 <button
@@ -250,14 +251,14 @@ export function TranscriptCarousel({
                   className="inline-flex items-center gap-2 rounded-full bg-indigo-50 border border-indigo-100 px-4 py-1.5 text-[12px] font-bold text-indigo-600 hover:bg-indigo-100 transition-colors"
                 >
                   <AppIcon name="ai" className="size-3.5" />
-                  Get AI Suggestion
+                  {lang === "id" ? "Dapatkan Saran AI" : "Get AI Suggestion"}
                 </button>
               )}
               
               {isLoading && (
                 <div className="flex items-center gap-2 text-[13px] text-slate-500 font-medium">
                   <div className="size-4 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-                  Analyzing...
+                  {lang === "id" ? "Menganalisis..." : "Analyzing..."}
                 </div>
               )}
             </div>
@@ -292,6 +293,7 @@ export function TranscriptCarousel({
                   original={currentCoachData.rewrite.originalTextExcerpt} 
                   improved={currentCoachData.rewrite.improvedAnswer} 
                   reasoning={currentCoachData.rewrite.reasoning} 
+                  lang={lang}
                 />
               </motion.div>
               <motion.div variants={{
@@ -302,6 +304,7 @@ export function TranscriptCarousel({
                   strengths={currentCoachData.coaching.strengths} 
                   weaknesses={currentCoachData.coaching.weaknesses} 
                   tips={currentCoachData.coaching.tips} 
+                  lang={lang}
                 />
               </motion.div>
             </motion.div>

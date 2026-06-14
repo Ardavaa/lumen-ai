@@ -13,6 +13,7 @@ export function OverallAIInsight({
   feedback: Record<string, unknown>;
   cachedInsight?: string;
   onComplete?: (insight: string) => void;
+  lang?: string;
 }) {
   const [displayedText, setDisplayedText] = useState(cachedInsight || "");
   const rawTextRef = useRef("");
@@ -33,7 +34,7 @@ export function OverallAIInsight({
 
     async function fetchStream() {
       try {
-        const prompt = `Overall Score: ${scores.final}/100\nContent: ${scores.content}/100\nDelivery: ${scores.delivery}/100\nNon-verbal: ${scores.nonVerbal}/100\n\nOriginal Feedback Data:\n${JSON.stringify(feedback)}\n\nWrite a 3-sentence overall summary with **highlights**.`;
+        const prompt = `Overall Score: ${scores.final}/100\nContent: ${scores.content}/100\nDelivery: ${scores.delivery}/100\nNon-verbal: ${scores.nonVerbal}/100\n\nOriginal Feedback Data:\n${JSON.stringify(feedback)}\n\nWrite a 3-sentence overall summary with **highlights**. ${lang === "id" ? "The summary MUST be in Indonesian (Bahasa Indonesia)." : "The summary MUST be in English."}`;
         const response = await fetch("/api/score-feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -116,13 +117,13 @@ export function OverallAIInsight({
       <div className="flex items-center gap-2 mb-4 border-b border-slate-100 pb-3 relative z-10">
         <AppIcon name="ai" className="size-5 text-indigo-600" />
         <h3 className="text-[14px] font-bold uppercase tracking-widest text-slate-900">
-          AI Overall Evaluation
+          {lang === "id" ? "Evaluasi Keseluruhan AI" : "AI Overall Evaluation"}
         </h3>
       </div>
 
       <div className="min-h-[60px] relative z-10">
         {error && (
-          <div className="text-[13px] text-rose-500 font-medium">Failed to load AI evaluation: {error}</div>
+          <div className="text-[13px] text-rose-500 font-medium">{lang === "id" ? "Gagal memuat evaluasi AI:" : "Failed to load AI evaluation:"} {error}</div>
         )}
 
         {isLoading && !error ? (
@@ -133,7 +134,7 @@ export function OverallAIInsight({
           </div>
         ) : (
           <p className="text-[14px] leading-[28px] text-slate-600 font-light whitespace-pre-wrap transition-opacity duration-300">
-            {parseRichText(displayedText || (isTyping ? "" : "Waiting for evaluation..."))}
+            {parseRichText(displayedText || (isTyping ? "" : (lang === "id" ? "Menunggu evaluasi..." : "Waiting for evaluation...")))}
             {isTyping && <span className="inline-block w-1.5 h-4 ml-1 bg-indigo-400 animate-pulse align-middle" />}
           </p>
         )}
