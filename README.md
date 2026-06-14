@@ -1,275 +1,92 @@
-# Lumen — AI Interview Simulator
+# `lumen`
 
-Platform simulasi wawancara berbasis AI yang menilai performa kandidat secara **multimodal** (video, audio, dan teks). Sistem menghasilkan skor final **0–100** beserta umpan balik yang dapat ditindaklanjuti untuk persiapan wawancara kerja.
+![](banner-1.png)
 
-> Capstone project — Data Science / Full-Stack
+![](banner.png)
 
----
-
-## Fitur utama
-
-| Area | Kemampuan |
-|------|-----------|
-| **Rekaman** | Webcam + mikrofon langsung di browser, dengan overlay emosi wajah real-time |
-| **Transkripsi** | Whisper (Indonesia–Inggris) dengan pengaturan anti-halusinasi |
-| **Konten** | Skor komposit: relevansi Q↔A (E5 + cross-encoder), rubric, kelengkapan/STAR |
-| **Delivery** | WPM, filler words, analisis jeda, emosi suara (Wav2Vec2 SER) |
-| **Non-verbal** | Deteksi wajah + klasifikasi emosi (YOLOv8 + OpenCV) |
-| **Skor gabungan** | Weighted fusion **40% konten · 30% delivery · 30% non-verbal** |
-| **Dashboard** | Riwayat sesi, report card, dan statistik agregat |
+**Platform Simulasi Wawancara Berbasis AI dengan Penilaian Multimodal**
 
 ---
 
-## Arsitektur
+## Team
 
-```mermaid
-flowchart LR
-  subgraph Frontend["Frontend (Next.js)"]
-    Setup[Setup / Topik]
-    Preflight[Preflight checklist]
-    Record[Recording + overlay]
-    Analyze[Analyzing]
-    Result[Result & Report]
-  end
 
-  subgraph Backend["Backend (FastAPI)"]
-    API[REST API]
-    FFmpeg[ffmpeg extract]
-    Whisper[Whisper ASR]
-    Audio[Delivery + SER]
-    Text[S-BERT]
-    Video[YOLO + face detect]
-    Fusion[Weighted fusion]
-  end
+| **Name**                    | **Role**                                               |
+| --------------------------- | ------------------------------------------------------ |
+| Muhammad Karov Ardava Barus | Lead, AI Engineer, Fullstack Developer, UI/UX Designer |
+| Muhammad Umar               | Computer Vision &amp; Pipeline Fusion Specialist       |
+| Muhammad Naufal Satria      | Audi &amp; Linguistic (NLP) Specialist                 |
+| Muhammad Rafif Radithya     | Computer Vision Specialist, UI/UX Designer             |
+|                             |                                                        |
 
-  Setup --> Preflight --> Record --> Analyze
-  Analyze -->|POST /api/analyze| API
-  Record -->|POST /api/detect-frame| API
-  Preflight -->|GET /api/preflight/*| API
-  API --> FFmpeg --> Whisper --> Audio
-  Whisper --> Text
-  FFmpeg --> Video
-  Audio --> Fusion
-  Text --> Fusion
-  Video --> Fusion
-  Fusion --> Result
-```
 
 ---
 
-## Tech stack
+## 1. Masalah: Kurangnya Umpan Balik Objektif dalam Persiapan Wawancara
 
-| Lapisan | Teknologi |
-|---------|-----------|
-| Frontend | Next.js 16, React 19, Tailwind CSS 4, TypeScript |
-| Backend | FastAPI, Uvicorn, Python 3.13+ |
-| ML / Audio | Whisper, Wav2Vec2, librosa, sentence-transformers |
-| ML / Video | Ultralytics YOLOv8, OpenCV Haar cascade |
-| Media | ffmpeg (ekstraksi audio dari video) |
-| Package manager | `uv` (backend), `npm` (frontend) |
+Banyak kandidat pencari kerja menghadapi kecemasan dan kurangnya umpan balik objektif saat berlatih untuk wawancara kerja. Sesi latihan secara mandiri sulit diukur progresnya, sementara menggunakan jasa profesional seringkali mahal. **Lumen** hadir untuk memberikan pengalaman simulasi wawancara yang mendekati kondisi nyata dengan analisis kuantitatif dan kualitatif berbasis kecerdasan buatan.
 
----
+## 2. Solusi: Simulasi Multimodal Berbasis AI (Edge Computing)
 
-## Prasyarat
+**Lumen** adalah platform simulasi wawancara cerdas yang mengevaluasi kandidat melalui berbagai aspek komunikasi (video, audio, dan teks):
 
-Pasang di mesin lokal sebelum menjalankan proyek:
+- **Analisis Multimodal SOTA:** Menggunakan integrasi **Whisper** untuk transkripsi, **Wav2Vec2** untuk emosi suara, **S-BERT** untuk relevansi konten, dan **YOLOv8** untuk analisis ekspresi wajah.
+- **Umpan Balik Holistik:** Tidak hanya menilai *apa* yang diucapkan (konten), tetapi juga *bagaimana* cara mengucapkannya (kecepatan bicara, *filler words*) dan bahasa tubuhnya (*non-verbal*).
+- **Privacy-First Architecture:** Proses inferensi model ML berjalan di jaringan lokal, sehingga rekaman video/audio kandidat tidak pernah dikirim ke layanan *cloud* publik.
 
-1. **Node.js** 20+ dan **npm**
-2. **Python** 3.13+ (sesuai `backend/pyproject.toml`)
-3. **[uv](https://docs.astral.sh/uv/)** — manajer dependensi Python
-4. **[ffmpeg](https://ffmpeg.org/download.html)** — harus ada di `PATH` (untuk konversi video → WAV)
+## 3. Tech Stack &amp; Engineering Excellence
 
-Verifikasi:
+Kami menggunakan arsitektur monorepo yang dirancang untuk menjalankan pemrosesan ML tingkat lanjut secara lokal:
 
-```bash
-node -v
-npm -v
-python --version
-uv --version
-ffmpeg -version
-```
 
-### File model wajib
+| Komponen                   | Teknologi                | Peran                                                                                            |
+| :-------------------------- | :------------------------ | :------------------------------------------------------------------------------------------------ |
+| **Frontend**               | **Next.js 16**           | Antarmuka pengguna *real-time* dengan fitur perekaman via *browser* dan *overlay* emosi dinamis. |
+| **Backend**                | **FastAPI**              | REST API asinkron untuk orkestrasi pemrosesan media (ffmpeg) dan eksekusi model ML.              |
+| **ASR &amp; NLP Engine**   | **Whisper &amp; S-BERT** | Model transkripsi ucapan yang akurat (anti-halusinasi) dan model *semantic-similarity* jawaban.  |
+| **Audio &amp; SER Engine** | **Wav2Vec2**             | Ekstraksi *delivery metrics* (WPM, *pauses*) dan *Speech Emotion Recognition*.                   |
+| **Computer Vision**        | **YOLOv8 &amp; OpenCV**  | Ekstraksi *bounding box* wajah dan sentimen ekspresi setiap *frame* secara lokal.                |
 
-Pastikan bobot YOLO untuk emosi wajah ada di:
 
-```
-backend/ml_pipeline/video/models/best.pt
-```
+## 4. Fitur Utama
 
-Model Hugging Face (Whisper, Wav2Vec2, S-BERT) akan diunduh otomatis ke `backend/.hf_cache/` pada **run pertama** (bisa memakan waktu beberapa menit).
+### A. Real-Time Recording &amp; Preflight
 
----
+- **Model Preflight:** Pengecekan status pemuatan model AI di latar belakang untuk memastikan sesi wawancara lancar.
+- **Live Emotion Overlay:** Kandidat dapat melihat deteksi *bounding box* wajah dan sentimen emosinya langsung saat perekaman berlangsung.
 
-## Cara menjalankan proyek
+### B. Multimodal Scoring System (Weighted Fusion)
 
-Jalankan **backend** dan **frontend** di dua terminal terpisah.
+Penilaian akhir dihitung secara komprehensif (0-100) dari berbagai model ML:
 
-### 1. Backend (API + ML)
+- **40% Konten:** Relevansi Q↔A menggunakan S-BERT, kelengkapan, dan struktur jawaban.
+- **30% Delivery:** Analisis kelancaran berbicara (WPM), *filler words*, jeda, dan emosi suara (*Wav2Vec2*).
+- **30% Non-verbal:** Distribusi ekspresi wajah (YOLOv8), stabilitas visual, dan tingkat kecemasan.
 
-```bash
-cd backend
+### C. Comprehensive Report Cards
 
-# Buat virtualenv & install dependensi (sekali saja)
-uv sync
+- Menyajikan hasil analisis *breakdown* per pertanyaan (skor komposit, *delivery metrics*, *emotion metrics*).
+- Menyediakan transkripsi *Whisper* lengkap beserta umpan balik teks untuk langkah perbaikan.
 
-# Opsional: salin contoh env sebelum menjalankan lokal
-cp .env.example .env
+### D. Dashboard &amp; History
 
-# Jalankan server API
-uv run uvicorn main:app --reload --port 8000
-```
+- Melacak riwayat simulasi kandidat, menampilkan ringkasan skor keseluruhan, dan menyediakan pemilihan topik khusus untuk berbagai ranah wawancara.
 
-Backend siap jika `GET http://localhost:8000/health` mengembalikan:
+## 5. Cara Menjalankan (Local Development)
 
-```json
-{ "status": "ok" }
-```
+### Prasyarat:
 
-Dokumentasi interaktif API: [http://localhost:8000/docs](http://localhost:8000/docs)
+Pastikan **Node.js 20+**, **Python 3.13+**, **uv**, dan **ffmpeg** sudah terinstal di sistem Anda.
 
-### 2. Frontend (UI)
+### Backend:
 
-```bash
-cd frontend
+1. `cd backend`
+2. `uv sync`
+3. `uv run uvicorn main:app --reload --port 8000`
 
-# Opsional: salin contoh env sebelum menjalankan lokal
-cp .env.example .env.local
+### Frontend:
 
-# Install dependensi dari lockfile
-npm ci
+1. `cd frontend`
+2. `npm ci`
+3. `npm run dev`
 
-# Development server
-npm run dev
-```
-
-Buka aplikasi di [http://localhost:3000](http://localhost:3000).
-
-### 3. (Opsional) Ubah URL backend
-
-Default frontend memanggil `http://127.0.0.1:8000`. Untuk override, buat file `frontend/.env.local`:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
-```
-
----
-
-## Alur penggunaan
-
-1. **Dashboard** → mulai simulasi baru  
-2. **Setup** → pilih kategori / topik pertanyaan  
-3. **Preflight** → checklist pemuatan model (Whisper, Wav2Vec2, S-BERT, YOLO, face detector)  
-4. **Recording** → jawab pertanyaan; overlay emosi wajah tampil saat merekam  
-5. **Analyzing** → upload & analisis multimodal di backend  
-6. **Result** → ringkasan skor  
-7. **Report cards** → breakdown detail (konten, delivery, non-verbal, transkrip)
-
----
-
-## API endpoints
-
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/health` | Health check |
-| `GET` | `/api/preflight/{model_key}` | Muat satu model (`whisper`, `wav2vec2`, `sbert`, `yolo`, `mediapipe`) |
-| `POST` | `/api/detect-frame` | Deteksi emosi + bounding box dari satu frame JPEG |
-| `POST` | `/api/analyze` | Analisis penuh rekaman (`file`, `question_text`, opsional `question_topic`) |
-
-Contoh analisis dengan `curl`:
-
-```bash
-curl -X POST "http://localhost:8000/api/analyze" \
-  -F "file=@recording.webm" \
-  -F "question_text=Tell me about a time you handled conflicting stakeholder requirements." \
-  -F "question_topic=product manager behavioral interview"
-```
-
----
-
-## Skoring
-
-| Komponen | Bobot | Sumber |
-|----------|-------|--------|
-| Content quality | 40% | S-BERT similarity vs topik pertanyaan |
-| Delivery & fluency | 30% | WPM, filler rate, pauses + blend emosi suara (25%) |
-| Non-verbal | 30% | Distribusi emosi wajah, stabilitas, nervous rate |
-
-Respons API mencakup antara lain: `final_score`, `transcription`, `delivery_metrics`, `emotion_metrics`, `video_emotion_metrics`, `feedback`.
-
----
-
-## Struktur proyek
-
-```
-capstone-app/
-├── frontend/                 # Next.js app
-│   └── app/
-│       ├── dashboard/
-│       ├── history/
-│       ├── report-cards/
-│       └── simulation/       # setup → preflight → recording → analyzing → result
-├── backend/
-│   ├── api/routes.py         # FastAPI routes
-│   ├── core/config.py        # Model IDs, bobot, cache HF
-│   ├── main.py               # Entry point
-│   └── ml_pipeline/
-│       ├── audio/            # Delivery, SER, filler.txt
-│       ├── text/             # Whisper, S-BERT
-│       ├── video/            # YOLO emotion, face detection
-│       └── fusion/           # Weighted score
-├── PROJECT-DESC.md           # Spesifikasi capstone
-└── README.md                 # Dokumen ini
-```
-
----
-
-## Cache model (hindari download ulang)
-
-Semua model Hugging Face disimpan di:
-
-```
-backend/.hf_cache/
-```
-
-Folder ini di-ignore oleh Git. Setelah unduhan pertama, restart backend akan memuat dari disk lokal tanpa mengunduh ulang (selama cache tidak dihapus).
-
-File media lokal untuk pengujian manual, seperti rekaman `.mp4`, `.webm`, atau `.wav` di `test-case/`, juga tidak disimpan di Git. Tambahkan file uji sendiri secara lokal bila perlu menjalankan analisis manual.
-
----
-
-## Troubleshooting
-
-| Masalah | Solusi |
-|---------|--------|
-| `ffmpeg is not installed` | Pasang ffmpeg dan pastikan ada di `PATH` |
-| Analisis gagal / network error | Pastikan backend jalan di port **8000** sebelum merekam |
-| Preflight model gagal | Cek koneksi internet (unduhan pertama), ruang disk, dan `best.pt` |
-| Transkripsi berulang `"to, to, to..."` | Sudah dimitigasi via `no_repeat_ngram_size`, `repetition_penalty`, `condition_on_previous_text=False` |
-| Rekaman terlalu besar | Video disimpan di **IndexedDB** browser (bukan sessionStorage) |
-| Hydration error di halaman result | Refresh halaman; pastikan analisis selesai sebelum membuka `/simulation/result` |
-| CORS error | Backend mengizinkan origin `http://localhost:3000` — jalankan frontend di port tersebut |
-
----
-
-## Development
-
-```bash
-# Backend — lint/test ringan
-cd backend
-uvx ruff check .
-uvx pytest
-
-# Frontend — lint dan production build
-cd frontend
-npm run lint
-npm run build && npm start
-```
-
----
-
-## Tim & lisensi
-
-Proyek capstone — sesuaikan bagian kredit dan lisensi sesuai kebijakan kampus Anda.
-
-Untuk detail spesifikasi arsitektur awal, lihat [`PROJECT-DESC.md`](./PROJECT-DESC.md).
