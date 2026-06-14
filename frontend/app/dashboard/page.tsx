@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useMemo, useSyncExternalStore, useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
-import AppIcon from "@/app/components/AppIcon";
+import AppIcon, { type IconName } from "@/app/components/AppIcon";
 import { Sidebar } from "@/app/components/Sidebar";
 import ButtonWithIcon from "@/components/ui/button-witn-icon";
 import Aurora from "@/components/ui/Aurora";
@@ -15,7 +15,12 @@ import {
   STORAGE_KEYS,
   fetchUserHistoryFromDB,
   type SessionRecord,
+  type CategoryId,
+  SIMULATION_CATEGORIES,
+  saveSimulationConfig,
+  type SimulationConfig,
 } from "@/app/lib/analysis";
+import { useRouter } from "next/navigation";
 
 // ─── UTILS & STORAGE ────────────────────────────────────────────────────────
 
@@ -85,9 +90,103 @@ function Sparkline({ data, color, className = "" }: { data: number[], color: str
   );
 }
 
+// ─── SETUP MODAL COMPONENTS ──────────────────────────────────────────────────
+
+type Category = {
+  id: CategoryId;
+  icon: IconName;
+  name: string;
+  meta: string;
+};
+
+const CATEGORIES: Category[] = [
+  { id: "sw-engineer", icon: "code", name: "SW Engineer", meta: "Technical · 3 Q" },
+  { id: "data-analyst", icon: "chart", name: "Data Analyst", meta: "Case · 3 Q" },
+  { id: "product-mgr", icon: "briefcase", name: "Product Mgr", meta: "Behavioral · 3 Q" },
+  { id: "marketing", icon: "megaphone", name: "Marketing", meta: "Case · 3 Q" },
+  { id: "ui-ux", icon: "palette", name: "UI / UX", meta: "Portfolio · 3 Q" },
+  { id: "general", icon: "message", name: "General", meta: "Intro · 3 Q" },
+];
+
+type CategoryCardProps = {
+  category: Category;
+  selected: boolean;
+  onClick: () => void;
+};
+
+function CategoryCard({ category, selected, onClick }: CategoryCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex cursor-pointer flex-col gap-1.5 border border-black p-[25px] text-left transition-colors ${
+        selected
+          ? "bg-[#0a0a0a] shadow-[0px_4px_2px_rgba(0,0,0,0.25)]"
+          : "bg-[#faf7f2] hover:bg-black/5"
+      }`}
+    >
+      <div className={`flex size-9 items-center justify-center border p-px ${selected ? "border-[#faf7f2]" : "border-[#0a0a0a]"}`}>
+        <AppIcon name={category.icon} className="size-5" />
+      </div>
+      <div className="pt-[18px]">
+        <p className={`text-[18px] font-bold uppercase tracking-[-0.18px] ${selected ? "text-[#faf7f2]" : "text-[#0a0a0a]"}`}>
+          {category.name}
+        </p>
+      </div>
+      <p className="text-[10px] uppercase tracking-[1px] text-[#bfbfbf]">{category.meta}</p>
+    </button>
+  );
+}
+
 // ─── DASHBOARD PAGE ─────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const router = useRouter();
+  const [isSetupOpen, setIsSetupOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<CategoryId | null>("sw-engineer");
+  const [customTopic, setCustomTopic] = useState("");
+  const [selectedPersona, setSelectedPersona] = useState<"friendly" | "strict" | "stress">("friendly");
+
+  const canContinue = selectedId !== null || customTopic.trim().length > 0;
+
+  function buildSimulationConfig(): SimulationConfig {
+    const custom = customTopic.trim();
+    if (custom) {
+      return {
+        categoryId: "custom",
+        categoryLabel: "Custom Topic",
+        questionTopic: custom,
+        persona: selectedPersona,
+        questions: [
+          `Introduce your background for this topic: ${custom}.`,
+          "Describe a relevant challenge you have handled and the steps you took.",
+          "What would you prioritize in your first 30 days for this role or context?",
+        ],
+      };
+    }
+
+    const category = CATEGORIES.find((c) => c.id === selectedId);
+    if (!category) {
+      return {
+        categoryId: "sw-engineer",
+        persona: selectedPersona,
+        ...SIMULATION_CATEGORIES["sw-engineer"],
+      };
+    }
+
+    return {
+      categoryId: category.id,
+      persona: selectedPersona,
+      ...SIMULATION_CATEGORIES[category.id],
+    };
+  }
+
+  function handleContinue() {
+    if (!canContinue) return;
+    saveSimulationConfig(buildSimulationConfig());
+    router.push("/simulation/preflight");
+  }
+
   const historySnapshot = useSyncExternalStore(subscribeToStorage, getHistorySnapshot, () => "");
   const sessions = useMemo(() => parseHistorySnapshot(historySnapshot), [historySnapshot]);
 
@@ -340,9 +439,9 @@ export default function Dashboard() {
               
               {/* Right: Primary Action Center (Glassmorphism Button) */}
               <div className="relative z-10 shrink-0 flex flex-col items-center xl:items-end w-full xl:w-auto">
-                <Link href="/simulation/setup">
+                <button type="button" onClick={() => setIsSetupOpen(true)}>
                   <ButtonWithIcon />
-                </Link>
+                </button>
               </div>
             </div>
           </BorderGlow>
@@ -531,6 +630,120 @@ export default function Dashboard() {
 
         </div>
       </main>
+
+      {/* ── SETUP MODAL OVERLAY ── */}
+      {isSetupOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-6 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden bg-[#faf7f2] shadow-2xl rounded-2xl ring-1 ring-black/5">
+            {/* Top nav */}
+            <nav className="flex h-16 shrink-0 items-center justify-between border-b border-[#0a0a0a] px-8">
+              <div className="flex items-center gap-2.5">
+                <div className="size-6 bg-[#0a0a0a]" />
+                <span className="text-[14px] font-bold uppercase tracking-[0.7px] text-[#0a0a0a]">Lumen Setup</span>
+              </div>
+              <button
+                onClick={() => setIsSetupOpen(false)}
+                className="text-slate-500 hover:text-slate-900"
+              >
+                <AppIcon name="x" className="size-6" />
+              </button>
+            </nav>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="mx-auto w-full px-8 pb-12 pt-6 sm:px-12">
+                <p className="text-[11px] uppercase tracking-[2.2px] text-[#bfbfbf]">[ New simulation ]</p>
+                <h2 className="mt-2 text-[32px] sm:text-[40px] font-bold uppercase leading-tight tracking-[-1px] text-[#0a0a0a]">
+                  What are you preparing for?
+                </h2>
+                <p className="mt-4 max-w-[600px] text-[13px] leading-[20.8px] text-[#0a0a0a]">
+                  Pick a category. We&apos;ll tailor the questions and the scoring rubric. You can also write your own topic below.
+                </p>
+
+                {/* Category grid */}
+                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 border border-black bg-white">
+                  {CATEGORIES.map((cat) => (
+                    <CategoryCard
+                      key={cat.id}
+                      category={cat}
+                      selected={selectedId === cat.id}
+                      onClick={() => setSelectedId(cat.id === selectedId ? null : cat.id)}
+                    />
+                  ))}
+                </div>
+
+                {/* Custom topic */}
+                <div className="mt-6 border border-[#0a0a0a] bg-white p-[25px]">
+                  <p className="text-[14px] font-bold uppercase tracking-[0.28px] text-[#0a0a0a]">[ Or write your own ]</p>
+                  <p className="mb-[10px] mt-1.5 text-[11px] tracking-[0.55px] text-[#bfbfbf]">
+                    Paste a job description, write a role, or describe the company. We&apos;ll generate context-aware questions.
+                  </p>
+                  <input
+                    type="text"
+                    value={customTopic}
+                    onChange={(e) => setCustomTopic(e.target.value)}
+                    placeholder="e.g., Senior Backend Engineer at a fintech startup..."
+                    className="w-full border border-[#0a0a0a] bg-[#faf7f2] px-[15px] py-[13px] text-[13px] text-[#0a0a0a] placeholder:text-[#757575] focus:outline-none"
+                  />
+                </div>
+
+                {/* Persona Selection */}
+                <div className="mt-6 border border-[#0a0a0a] bg-white p-[25px]">
+                  <p className="text-[14px] font-bold uppercase tracking-[0.28px] text-[#0a0a0a]">[ Choose Interviewer Persona ]</p>
+                  <p className="mb-[15px] mt-1.5 text-[11px] tracking-[0.55px] text-[#bfbfbf]">
+                    Select the personality of your AI interviewer. This will affect how questions are asked.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPersona("friendly")}
+                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "friendly" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
+                    >
+                      <span className="text-[13px] font-bold uppercase">Friendly HR</span>
+                      <span className={`mt-1 text-[10px] ${selectedPersona === "friendly" ? "text-white/70" : "text-[#757575]"}`}>Supportive & relaxed</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPersona("strict")}
+                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "strict" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
+                    >
+                      <span className="text-[13px] font-bold uppercase">Strict Tech Lead</span>
+                      <span className={`mt-1 text-[10px] ${selectedPersona === "strict" ? "text-white/70" : "text-[#757575]"}`}>Direct & technical</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPersona("stress")}
+                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "stress" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
+                    >
+                      <span className="text-[13px] font-bold uppercase">Stress Interviewer</span>
+                      <span className={`mt-1 text-[10px] ${selectedPersona === "stress" ? "text-white/70" : "text-[#757575]"}`}>Pressuring & skeptical</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-8 flex items-center justify-end gap-4 border-t border-[#0a0a0a] pt-8">
+                  <button
+                    onClick={() => setIsSetupOpen(false)}
+                    className="border border-[#0a0a0a] bg-[#faf7f2] px-5 py-[13px] text-[12px] font-medium uppercase tracking-[1.2px] text-[#0a0a0a] hover:bg-black/5"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canContinue}
+                    onClick={handleContinue}
+                    className="flex items-center gap-2 border border-[#0a0a0a] bg-[#0a0a0a] px-[25px] py-[13px] text-[13px] font-medium uppercase tracking-[1.3px] text-[#faf7f2] transition-colors hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:border-[#bfbfbf] disabled:bg-[#bfbfbf]"
+                  >
+                    Start Preflight
+                    <AppIcon name="arrow-right" className="size-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
