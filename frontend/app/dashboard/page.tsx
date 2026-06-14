@@ -119,21 +119,21 @@ function CategoryCard({ category, selected, onClick }: CategoryCardProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`flex cursor-pointer flex-col gap-1.5 border border-black p-[25px] text-left transition-colors ${
+      className={`group flex flex-col gap-3 rounded-[16px] p-4 text-left transition-all duration-200 border ${
         selected
-          ? "bg-[#0a0a0a] shadow-[0px_4px_2px_rgba(0,0,0,0.25)]"
-          : "bg-[#faf7f2] hover:bg-black/5"
+          ? "border-indigo-500 bg-indigo-50/50 shadow-sm ring-1 ring-indigo-500/20"
+          : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
       }`}
     >
-      <div className={`flex size-9 items-center justify-center border p-px ${selected ? "border-[#faf7f2]" : "border-[#0a0a0a]"}`}>
+      <div className={`flex size-10 items-center justify-center rounded-[12px] transition-colors duration-200 ${selected ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20" : "bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700"}`}>
         <AppIcon name={category.icon} className="size-5" />
       </div>
-      <div className="pt-[18px]">
-        <p className={`text-[18px] font-bold uppercase tracking-[-0.18px] ${selected ? "text-[#faf7f2]" : "text-[#0a0a0a]"}`}>
+      <div>
+        <p className={`text-[15px] font-semibold tracking-tight ${selected ? "text-indigo-900" : "text-slate-900"}`}>
           {category.name}
         </p>
+        <p className={`text-[12px] mt-0.5 ${selected ? "text-indigo-600/80" : "text-slate-500"}`}>{category.meta}</p>
       </div>
-      <p className="text-[10px] uppercase tracking-[1px] text-[#bfbfbf]">{category.meta}</p>
     </button>
   );
 }
@@ -633,35 +633,36 @@ export default function Dashboard() {
 
       {/* ── SETUP MODAL OVERLAY ── */}
       {isSetupOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 sm:p-6 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden bg-[#faf7f2] shadow-2xl rounded-2xl ring-1 ring-black/5">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 p-4 sm:p-6 backdrop-blur-md transition-all"
+          onClick={() => setIsSetupOpen(false)}
+        >
+          <div 
+            className="flex max-h-[90vh] w-full max-w-[800px] flex-col overflow-hidden bg-white shadow-[0_24px_60px_-12px_rgba(0,0,0,0.15)] rounded-[28px] ring-1 ring-slate-200/60"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Top nav */}
-            <nav className="flex h-16 shrink-0 items-center justify-between border-b border-[#0a0a0a] px-8">
-              <div className="flex items-center gap-2.5">
-                <div className="size-6 bg-[#0a0a0a]" />
-                <span className="text-[14px] font-bold uppercase tracking-[0.7px] text-[#0a0a0a]">Lumen Setup</span>
-              </div>
+            <nav className="flex h-16 shrink-0 items-center justify-end px-8 mt-2">
               <button
                 onClick={() => setIsSetupOpen(false)}
-                className="text-slate-500 hover:text-slate-900"
+                className="flex size-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
               >
-                <AppIcon name="x" className="size-6" />
+                <AppIcon name="x" className="size-5" />
               </button>
             </nav>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="mx-auto w-full px-8 pb-12 pt-6 sm:px-12">
-                <p className="text-[11px] uppercase tracking-[2.2px] text-[#bfbfbf]">[ New simulation ]</p>
-                <h2 className="mt-2 text-[32px] sm:text-[40px] font-bold uppercase leading-tight tracking-[-1px] text-[#0a0a0a]">
+            <div className="flex-1 overflow-y-auto px-8 pb-8 pt-2 sm:px-12 custom-scrollbar">
+              <div className="mx-auto w-full max-w-[680px]">
+                <h2 className="text-[32px] font-semibold tracking-tight text-slate-900">
                   What are you preparing for?
                 </h2>
-                <p className="mt-4 max-w-[600px] text-[13px] leading-[20.8px] text-[#0a0a0a]">
-                  Pick a category. We&apos;ll tailor the questions and the scoring rubric. You can also write your own topic below.
+                <p className="mt-2 text-[15px] font-light text-slate-500">
+                  Select a category to tailor the questions and scoring rubric, or define your own topic.
                 </p>
 
                 {/* Category grid */}
-                <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 border border-black bg-white">
+                <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
                   {CATEGORIES.map((cat) => (
                     <CategoryCard
                       key={cat.id}
@@ -673,59 +674,59 @@ export default function Dashboard() {
                 </div>
 
                 {/* Custom topic */}
-                <div className="mt-6 border border-[#0a0a0a] bg-white p-[25px]">
-                  <p className="text-[14px] font-bold uppercase tracking-[0.28px] text-[#0a0a0a]">[ Or write your own ]</p>
-                  <p className="mb-[10px] mt-1.5 text-[11px] tracking-[0.55px] text-[#bfbfbf]">
-                    Paste a job description, write a role, or describe the company. We&apos;ll generate context-aware questions.
+                <div className="mt-10 flex flex-col gap-2">
+                  <label className="text-[14px] font-medium text-slate-800">Or define a custom topic</label>
+                  <p className="text-[13px] text-slate-500 mb-1">
+                    Paste a job description or describe the role. We'll generate context-aware questions.
                   </p>
-                  <input
-                    type="text"
-                    value={customTopic}
-                    onChange={(e) => setCustomTopic(e.target.value)}
-                    placeholder="e.g., Senior Backend Engineer at a fintech startup..."
-                    className="w-full border border-[#0a0a0a] bg-[#faf7f2] px-[15px] py-[13px] text-[13px] text-[#0a0a0a] placeholder:text-[#757575] focus:outline-none"
-                  />
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={customTopic}
+                      onChange={(e) => setCustomTopic(e.target.value)}
+                      placeholder="e.g., Senior Backend Engineer at a fintech startup..."
+                      className="w-full rounded-[16px] border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                    />
+                  </div>
                 </div>
 
                 {/* Persona Selection */}
-                <div className="mt-6 border border-[#0a0a0a] bg-white p-[25px]">
-                  <p className="text-[14px] font-bold uppercase tracking-[0.28px] text-[#0a0a0a]">[ Choose Interviewer Persona ]</p>
-                  <p className="mb-[15px] mt-1.5 text-[11px] tracking-[0.55px] text-[#bfbfbf]">
-                    Select the personality of your AI interviewer. This will affect how questions are asked.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPersona("friendly")}
-                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "friendly" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
-                    >
-                      <span className="text-[13px] font-bold uppercase">Friendly HR</span>
-                      <span className={`mt-1 text-[10px] ${selectedPersona === "friendly" ? "text-white/70" : "text-[#757575]"}`}>Supportive & relaxed</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPersona("strict")}
-                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "strict" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
-                    >
-                      <span className="text-[13px] font-bold uppercase">Strict Tech Lead</span>
-                      <span className={`mt-1 text-[10px] ${selectedPersona === "strict" ? "text-white/70" : "text-[#757575]"}`}>Direct & technical</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedPersona("stress")}
-                      className={`flex flex-col border p-4 text-left transition-colors ${selectedPersona === "stress" ? "border-[#0a0a0a] bg-[#0a0a0a] text-[#faf7f2]" : "border-[#bfbfbf] bg-transparent text-[#0a0a0a] hover:border-[#0a0a0a]"}`}
-                    >
-                      <span className="text-[13px] font-bold uppercase">Stress Interviewer</span>
-                      <span className={`mt-1 text-[10px] ${selectedPersona === "stress" ? "text-white/70" : "text-[#757575]"}`}>Pressuring & skeptical</span>
-                    </button>
+                <div className="mt-10 flex flex-col gap-3">
+                  <label className="text-[14px] font-medium text-slate-800">Interviewer Persona</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { id: "friendly", title: "Friendly HR", desc: "Supportive & relaxed", emoji: "😊" },
+                      { id: "strict", title: "Strict Tech Lead", desc: "Direct & technical", emoji: "👔" },
+                      { id: "stress", title: "Stress Interviewer", desc: "Pressuring & skeptical", emoji: "⚡" }
+                    ].map((persona) => {
+                      const isSelected = selectedPersona === persona.id;
+                      return (
+                        <button
+                          key={persona.id}
+                          type="button"
+                          onClick={() => setSelectedPersona(persona.id as any)}
+                          className={`flex flex-col gap-1.5 rounded-[16px] p-4 text-left transition-all border ${
+                            isSelected
+                              ? "border-slate-900 bg-slate-900 shadow-md shadow-slate-900/10"
+                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className={`flex size-8 items-center justify-center rounded-full mb-1 ${isSelected ? "bg-white/20" : "bg-slate-100"}`}>
+                            <span className="text-[16px] leading-none">{persona.emoji}</span>
+                          </div>
+                          <span className={`text-[14px] font-semibold tracking-tight ${isSelected ? "text-white" : "text-slate-900"}`}>{persona.title}</span>
+                          <span className={`text-[12px] ${isSelected ? "text-slate-300" : "text-slate-500"}`}>{persona.desc}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="mt-8 flex items-center justify-end gap-4 border-t border-[#0a0a0a] pt-8">
+                <div className="mt-12 flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
                   <button
                     onClick={() => setIsSetupOpen(false)}
-                    className="border border-[#0a0a0a] bg-[#faf7f2] px-5 py-[13px] text-[12px] font-medium uppercase tracking-[1.2px] text-[#0a0a0a] hover:bg-black/5"
+                    className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                   >
                     Cancel
                   </button>
@@ -733,7 +734,7 @@ export default function Dashboard() {
                     type="button"
                     disabled={!canContinue}
                     onClick={handleContinue}
-                    className="flex items-center gap-2 border border-[#0a0a0a] bg-[#0a0a0a] px-[25px] py-[13px] text-[13px] font-medium uppercase tracking-[1.3px] text-[#faf7f2] transition-colors hover:bg-[#1a1a1a] disabled:cursor-not-allowed disabled:border-[#bfbfbf] disabled:bg-[#bfbfbf]"
+                    className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-lg hover:shadow-slate-900/20"
                   >
                     Start Preflight
                     <AppIcon name="arrow-right" className="size-4" />

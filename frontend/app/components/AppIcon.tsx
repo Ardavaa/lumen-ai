@@ -22,7 +22,8 @@ export type IconName =
   | "settings"
   | "target"
   | "user"
-  | "ai";
+  | "ai"
+  | "x";
 
 type AppIconProps = {
   name: IconName;
@@ -210,6 +211,13 @@ function renderIconPath(name: IconName): ReactNode {
         <>
           <circle cx="12" cy="8" r="4" />
           <path d="M4 21a8 8 0 0 1 16 0" />
+        </>
+      );
+    case "x":
+      return (
+        <>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </>
       );
   }
