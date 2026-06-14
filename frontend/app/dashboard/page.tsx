@@ -239,17 +239,6 @@ export default function Dashboard() {
         questionTopic: custom,
         persona: selectedPersona,
         language,
-        questions: language === "id" 
-          ? [
-              `Perkenalkan latar belakang Anda untuk topik ini: ${custom}.`,
-              "Gambarkan tantangan relevan yang pernah Anda tangani dan langkah yang Anda ambil.",
-              "Apa yang akan Anda prioritaskan di 30 hari pertama untuk peran atau konteks ini?",
-            ]
-          : [
-              `Introduce your background for this topic: ${custom}.`,
-              "Describe a relevant challenge you have handled and the steps you took.",
-              "What would you prioritize in your first 30 days for this role or context?",
-            ],
       };
     }
 

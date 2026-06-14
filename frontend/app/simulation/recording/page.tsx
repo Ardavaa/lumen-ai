@@ -195,7 +195,18 @@ export default function RecordingPage() {
         setPhase("camera-init");
       } catch (err) {
         console.error("Failed to generate questions via Gemma, using defaults.", err);
-        setQuestions(config.questions);
+        const fallback = config.language === "id" 
+          ? [
+              "Ceritakan tentang diri Anda dan pengalaman yang relevan dengan peran ini.",
+              "Apa tantangan terbesar yang pernah Anda hadapi dan bagaimana Anda mengatasinya?",
+              "Mengapa Anda tertarik dengan posisi ini dan nilai apa yang bisa Anda berikan?"
+            ]
+          : [
+              "Please introduce yourself and your relevant background.",
+              "Describe a significant challenge you have faced and how you handled it.",
+              "Why are you interested in this position and what value can you bring?"
+            ];
+        setQuestions(fallback);
         setPhase("camera-init");
       }
     }
@@ -203,7 +214,7 @@ export default function RecordingPage() {
     if (phase === "generating") {
       getQuestions();
     }
-  }, [config.categoryLabel, config.questionTopic, config.questions, config.persona, config.language, phase]);
+  }, [config.categoryId, config.categoryLabel, config.questionTopic, config.questions, config.persona, config.language, phase]);
 
   // Init Speech Recognition
   useEffect(() => {
