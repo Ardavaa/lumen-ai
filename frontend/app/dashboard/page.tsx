@@ -19,6 +19,7 @@ import {
   SIMULATION_CATEGORIES,
   saveSimulationConfig,
   type SimulationConfig,
+  getApiBaseUrl,
 } from "@/app/lib/analysis";
 import { useRouter } from "next/navigation";
 
@@ -143,9 +144,76 @@ function CategoryCard({ category, selected, onClick }: CategoryCardProps) {
 export default function Dashboard() {
   const router = useRouter();
   const [isSetupOpen, setIsSetupOpen] = useState(false);
+  const [setupPhase, setSetupPhase] = useState<"options" | "preflight">("options");
+  const [loadingModelIndex, setLoadingModelIndex] = useState(0);
+  const [preflightError, setPreflightError] = useState("");
+
   const [selectedId, setSelectedId] = useState<CategoryId | null>("sw-engineer");
   const [customTopic, setCustomTopic] = useState("");
   const [selectedPersona, setSelectedPersona] = useState<"friendly" | "strict" | "stress">("friendly");
+
+  useEffect(() => {
+    if (!isSetupOpen) {
+      setSetupPhase("options");
+      setLoadingModelIndex(0);
+      setPreflightError("");
+    }
+  }, [isSetupOpen]);
+
+  useEffect(() => {
+    if (setupPhase !== "preflight") return;
+
+    let isCancelled = false;
+
+    async function runChecks() {
+      const models = [
+        { key: "groq", label: "Speech to Text Model" },
+        { key: "wav2vec2", label: "Voice Emotion Model" },
+        { key: "sbert", label: "Semantic Scoring Model" },
+        { key: "yolo", label: "Facial Expression Model" },
+        { key: "mediapipe", label: "Face Detector Model" },
+      ];
+
+      for (let i = 0; i < models.length; i++) {
+        if (isCancelled) return;
+        setLoadingModelIndex(i);
+        
+        const model = models[i];
+        try {
+          const res = await fetch(`${getApiBaseUrl()}/api/preflight/${model.key}`, { 
+            signal: AbortSignal.timeout(600_000) 
+          });
+          
+          if (!res.ok) {
+            if (isCancelled) return;
+            setPreflightError(`Failed to load ${model.label}`);
+            return;
+          }
+          const data = await res.json();
+          if (data.status !== "ok") {
+            if (isCancelled) return;
+            setPreflightError(`Error in ${model.label}: ${data.message || 'unknown'}`);
+            return;
+          }
+        } catch (err) {
+          if (isCancelled) return;
+          setPreflightError(`Network error while loading ${model.label}`);
+          return;
+        }
+
+        await new Promise(r => setTimeout(r, 400));
+      }
+
+      if (isCancelled) return;
+      router.push("/simulation/recording");
+    }
+
+    runChecks();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [setupPhase, router]);
 
   const canContinue = selectedId !== null || customTopic.trim().length > 0;
 
@@ -184,7 +252,9 @@ export default function Dashboard() {
   function handleContinue() {
     if (!canContinue) return;
     saveSimulationConfig(buildSimulationConfig());
-    router.push("/simulation/preflight");
+    setSetupPhase("preflight");
+    setLoadingModelIndex(0);
+    setPreflightError("");
   }
 
   const historySnapshot = useSyncExternalStore(subscribeToStorage, getHistorySnapshot, () => "");
@@ -652,96 +722,151 @@ export default function Dashboard() {
             </nav>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-8 pb-8 pt-2 sm:px-12 custom-scrollbar">
-              <div className="mx-auto w-full max-w-[680px]">
-                <h2 className="text-[32px] font-semibold tracking-tight text-slate-900">
-                  What are you preparing for?
-                </h2>
-                <p className="mt-2 text-[15px] font-light text-slate-500">
-                  Select a category to tailor the questions and scoring rubric, or define your own topic.
-                </p>
-
-                {/* Category grid */}
-                <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                  {CATEGORIES.map((cat) => (
-                    <CategoryCard
-                      key={cat.id}
-                      category={cat}
-                      selected={selectedId === cat.id}
-                      onClick={() => setSelectedId(cat.id === selectedId ? null : cat.id)}
-                    />
-                  ))}
-                </div>
-
-                {/* Custom topic */}
-                <div className="mt-10 flex flex-col gap-2">
-                  <label className="text-[14px] font-medium text-slate-800">Or define a custom topic</label>
-                  <p className="text-[13px] text-slate-500 mb-1">
-                    Paste a job description or describe the role. We'll generate context-aware questions.
+            {setupPhase === "options" ? (
+              <div className="flex-1 overflow-y-auto px-8 pb-8 pt-2 sm:px-12 custom-scrollbar">
+                <div className="mx-auto w-full max-w-[680px]">
+                  <h2 className="text-[32px] font-semibold tracking-tight text-slate-900">
+                    What are you preparing for?
+                  </h2>
+                  <p className="mt-2 text-[15px] font-light text-slate-500">
+                    Select a category to tailor the questions and scoring rubric, or define your own topic.
                   </p>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={customTopic}
-                      onChange={(e) => setCustomTopic(e.target.value)}
-                      placeholder="e.g., Senior Backend Engineer at a fintech startup..."
-                      className="w-full rounded-[16px] border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
-                    />
-                  </div>
-                </div>
 
-                {/* Persona Selection */}
-                <div className="mt-10 flex flex-col gap-3">
-                  <label className="text-[14px] font-medium text-slate-800">Interviewer Persona</label>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { id: "friendly", title: "Friendly HR", desc: "Supportive & relaxed", emoji: "😊" },
-                      { id: "strict", title: "Strict Tech Lead", desc: "Direct & technical", emoji: "👔" },
-                      { id: "stress", title: "Stress Interviewer", desc: "Pressuring & skeptical", emoji: "⚡" }
-                    ].map((persona) => {
-                      const isSelected = selectedPersona === persona.id;
-                      return (
-                        <button
-                          key={persona.id}
-                          type="button"
-                          onClick={() => setSelectedPersona(persona.id as any)}
-                          className={`flex flex-col gap-1.5 rounded-[16px] p-4 text-left transition-all border ${
-                            isSelected
-                              ? "border-slate-900 bg-slate-900 shadow-md shadow-slate-900/10"
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          <div className={`flex size-8 items-center justify-center rounded-full mb-1 ${isSelected ? "bg-white/20" : "bg-slate-100"}`}>
-                            <span className="text-[16px] leading-none">{persona.emoji}</span>
-                          </div>
-                          <span className={`text-[14px] font-semibold tracking-tight ${isSelected ? "text-white" : "text-slate-900"}`}>{persona.title}</span>
-                          <span className={`text-[12px] ${isSelected ? "text-slate-300" : "text-slate-500"}`}>{persona.desc}</span>
-                        </button>
-                      );
-                    })}
+                  {/* Category grid */}
+                  <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+                    {CATEGORIES.map((cat) => (
+                      <CategoryCard
+                        key={cat.id}
+                        category={cat}
+                        selected={selectedId === cat.id}
+                        onClick={() => setSelectedId(cat.id === selectedId ? null : cat.id)}
+                      />
+                    ))}
                   </div>
-                </div>
 
-                {/* Actions */}
-                <div className="mt-12 flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
-                  <button
-                    onClick={() => setIsSetupOpen(false)}
-                    className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!canContinue}
-                    onClick={handleContinue}
-                    className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-lg hover:shadow-slate-900/20"
-                  >
-                    Start Preflight
-                    <AppIcon name="arrow-right" className="size-4" />
-                  </button>
+                  {/* Custom topic */}
+                  <div className="mt-10 flex flex-col gap-2">
+                    <label className="text-[14px] font-medium text-slate-800">Or define a custom topic</label>
+                    <p className="text-[13px] text-slate-500 mb-1">
+                      Paste a job description or describe the role. We'll generate context-aware questions.
+                    </p>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={customTopic}
+                        onChange={(e) => setCustomTopic(e.target.value)}
+                        placeholder="e.g., Senior Backend Engineer at a fintech startup..."
+                        className="w-full rounded-[16px] border border-slate-200 bg-slate-50/50 px-4 py-3.5 text-[14px] text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Persona Selection */}
+                  <div className="mt-10 flex flex-col gap-3">
+                    <label className="text-[14px] font-medium text-slate-800">Interviewer Persona</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {[
+                        { id: "friendly", title: "Friendly HR", desc: "Supportive & relaxed", emoji: "😊" },
+                        { id: "strict", title: "Strict Tech Lead", desc: "Direct & technical", emoji: "👔" },
+                        { id: "stress", title: "Stress Interviewer", desc: "Pressuring & skeptical", emoji: "⚡" }
+                      ].map((persona) => {
+                        const isSelected = selectedPersona === persona.id;
+                        return (
+                          <button
+                            key={persona.id}
+                            type="button"
+                            onClick={() => setSelectedPersona(persona.id as any)}
+                            className={`flex flex-col gap-1.5 rounded-[16px] p-4 text-left transition-all border ${
+                              isSelected
+                                ? "border-slate-900 bg-slate-900 shadow-md shadow-slate-900/10"
+                                : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            <div className={`flex size-8 items-center justify-center rounded-full mb-1 ${isSelected ? "bg-white/20" : "bg-slate-100"}`}>
+                              <span className="text-[16px] leading-none">{persona.emoji}</span>
+                            </div>
+                            <span className={`text-[14px] font-semibold tracking-tight ${isSelected ? "text-white" : "text-slate-900"}`}>{persona.title}</span>
+                            <span className={`text-[12px] ${isSelected ? "text-slate-300" : "text-slate-500"}`}>{persona.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-12 flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
+                    <button
+                      onClick={() => setIsSetupOpen(false)}
+                      className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!canContinue}
+                      onClick={handleContinue}
+                      className="flex items-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 hover:shadow-lg hover:shadow-slate-900/20"
+                    >
+                      Start Preflight
+                      <AppIcon name="arrow-right" className="size-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 bg-white/40 backdrop-blur-md min-h-[400px]">
+                {preflightError ? (
+                  <div className="flex flex-col items-center gap-4 text-center max-w-[320px]">
+                    <div className="flex size-14 items-center justify-center rounded-full bg-red-50 text-red-500 ring-1 ring-red-500/20 shadow-sm">
+                      <AppIcon name="x" className="size-6" />
+                    </div>
+                    <h3 className="text-[18px] font-semibold text-slate-900">Loading Error</h3>
+                    <p className="text-[14px] text-slate-500">{preflightError}</p>
+                    <div className="mt-4 flex gap-3">
+                      <button onClick={() => setSetupPhase("options")} className="rounded-full px-5 py-2.5 text-[14px] font-medium text-slate-600 hover:bg-slate-100 transition-colors">
+                        Cancel
+                      </button>
+                      <button 
+                        onClick={() => { setPreflightError(""); setLoadingModelIndex(0); setSetupPhase("options"); setTimeout(() => setSetupPhase("preflight"), 100); }} 
+                        className="rounded-full bg-slate-900 px-6 py-2.5 text-[14px] font-medium text-white hover:bg-slate-800 transition-all shadow-md"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-8 text-center w-full max-w-[320px] transition-all">
+                    {/* Rolling bar / Spinner */}
+                    <div className="relative flex items-center justify-center">
+                      <svg className="size-16 animate-spin text-slate-100" viewBox="0 0 24 24" fill="none">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+                        <path className="text-indigo-500" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center text-indigo-500">
+                        <AppIcon name="ai" className="size-5 opacity-50" />
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-2 w-full">
+                      <h3 className="text-[18px] font-semibold text-slate-900 tracking-tight">Preparing Environment</h3>
+                      <p className="text-[14px] text-slate-500 animate-pulse font-medium">
+                        Loading {
+                          ["Speech to Text Model", "Voice Emotion Model", "Semantic Scoring Model", "Facial Expression Model", "Face Detector Model"][loadingModelIndex]
+                        }...
+                      </p>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="w-full h-1.5 bg-slate-100/80 rounded-full overflow-hidden mt-2 shadow-inner">
+                      <div 
+                        className="h-full bg-indigo-500 transition-all duration-500 ease-out"
+                        style={{ width: `${((loadingModelIndex) / 5) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
