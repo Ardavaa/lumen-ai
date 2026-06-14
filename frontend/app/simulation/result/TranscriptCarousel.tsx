@@ -118,6 +118,7 @@ export function TranscriptCarousel({
   context,
   cachedCoachData,
   onCoachComplete,
+  lang,
 }: {
   questions: string[];
   transcripts: string[];

@@ -8,6 +8,7 @@ export function OverallAIInsight({
   feedback,
   cachedInsight,
   onComplete,
+  lang,
 }: {
   scores: { final: number; content: number; delivery: number; nonVerbal: number };
   feedback: Record<string, unknown>;

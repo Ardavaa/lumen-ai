@@ -451,13 +451,13 @@ export default function Dashboard() {
             <div className="flex items-center bg-white border border-slate-200 rounded-full p-1 shadow-sm">
               <button 
                 onClick={() => setLanguage("en")} 
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'en' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 English
               </button>
               <button 
                 onClick={() => setLanguage("id")} 
-                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'id' ? 'bg-indigo-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-4 py-1.5 text-[13px] font-semibold rounded-full transition-all ${language === 'id' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'}`}
               >
                 Indonesia
               </button>

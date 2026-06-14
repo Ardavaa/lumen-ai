@@ -22,6 +22,13 @@ import {
   loadSimulationConfig,
   saveAnswerToSession,
   STORAGE_KEYS,
+  analyzeRecording,
+  getQuestionTopic,
+  loadAnswerBlob,
+  loadSessionAnswers,
+  saveAnalysisResult,
+  saveSessionToHistory,
+  saveSimulationConfig,
 } from "@/app/lib/analysis";
 
 // ─── Design tokens ─────────────────────────────────────────────────────────
@@ -122,6 +129,78 @@ function getCategoryIcon(label: string): IconName {
   return "target"; // default fallback
 }
 
+// ─── Steps & Icons for Analyzing ────────────────────────────────────────────
+
+type StepState = "pending" | "active" | "done" | "error";
+
+type Step = { id: number; label: string; tech: string };
+
+const BASE_STEPS: Step[] = [
+  { id: 1, label: "Audio Transcription",       tech: "Groq Whisper STT" },
+  { id: 2, label: "Speech Pattern Analysis",   tech: "Wav2Vec2 · Silero VAD" },
+  { id: 3, label: "Facial Expression",         tech: "YOLOv8 · Face Detector" },
+  { id: 4, label: "Semantic Content Scoring",  tech: "IndoBERT · S-BERT" },
+  { id: 5, label: "Generating Feedback",       tech: "Weighted Fusion" },
+];
+
+function stepState(id: number, active: number, done: boolean): StepState {
+  if (done || id < active) return "done";
+  if (id === active) return "active";
+  return "pending";
+}
+
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect width="14" height="14" rx="3" fill="#22C55E" />
+      <polyline points="3,7 6,10 11,4" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect width="14" height="14" rx="3" fill="#EF4444" />
+      <line x1="4" y1="4" x2="10" y2="10" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+      <line x1="10" y1="4" x2="4" y2="10" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function mergeResults(results: any[]): any {
+  if (results.length === 0) throw new Error("No results to merge.");
+  if (results.length === 1) return results[0];
+
+  const avg = (key: string) =>
+    Math.round(
+      results.reduce((s, r) => s + (r[key] as number), 0) / results.length,
+    );
+
+  const base = results[results.length - 1]; // keep last for metadata
+  return {
+    ...base,
+    final_score:     avg("final_score"),
+    content_score:   avg("content_score"),
+    delivery_score:  avg("delivery_score"),
+    non_verbal_score: avg("non_verbal_score"),
+    transcription: results.map((r, i) => `Q${i + 1}: ${r.transcription}`).join("\n\n"),
+    feedback: {
+      content:    results.map((r, i) => `[Q${i + 1}] ${r.feedback.content}`).join("  "),
+      delivery:   results.map((r, i) => `[Q${i + 1}] ${r.feedback.delivery}`).join("  "),
+      non_verbal: results.map((r, i) => `[Q${i + 1}] ${r.feedback.non_verbal}`).join("  "),
+    },
+    delivery_metrics: {
+      ...base.delivery_metrics,
+      wpm: Math.round(results.reduce((s, r) => s + r.delivery_metrics.wpm, 0) / results.length),
+      filler_rate: parseFloat(
+        (results.reduce((s, r) => s + r.delivery_metrics.filler_rate, 0) / results.length).toFixed(1),
+      ),
+      duration_sec: results.reduce((s, r) => s + r.delivery_metrics.duration_sec, 0),
+    },
+  };
+}
+
 // ─── Phases ─────────────────────────────────────────────────────────────────
 type Phase =
   | "generating"      // generating questions via Gemma
@@ -129,7 +208,8 @@ type Phase =
   | "countdown"       // 5-4-3-2-1 overlay before answer
   | "answering"       // actively recording this question
   | "between"         // saving + brief "ready for next Q" screen
-  | "done";           // all Qs answered, submitting
+  | "done"            // all Qs answered, submitting
+  | "analyzing";      // running the model analysis step by step
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
@@ -172,6 +252,15 @@ export default function RecordingPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showChecklist, setShowChecklist] = useState(true);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
+  // ── Analyzing Phase States ──
+  const [analysisAnswers, setAnalysisAnswers]       = useState<any[]>([]);
+  const [currentAnalysisIdx, setCurrentAnalysisIdx] = useState(0);
+  const [analysisActiveStep, setAnalysisActiveStep] = useState(1);
+  const [analysisPhaseLabel, setAnalysisPhaseLabel] = useState("");
+  const [analysisFinished, setAnalysisFinished]     = useState(false);
+  const [analysisError, setAnalysisError]           = useState<string | null>(null);
+  const [analysisProgress, setAnalysisProgress]     = useState(0);
 
   // ── Simulation config ──────────────────────────────────────────────────────
   const snap = useSyncExternalStore(subscribeToStorage, getSimulationSnapshot, () => "");
@@ -642,11 +731,193 @@ export default function RecordingPage() {
   }, [elapsed, phase, isSaving]);
 
 
-  // ── Phase: done → navigate to analyzing ───────────────────────────────────
+  // ── Phase: done → trigger analyzing phase ───────────────────────────────────
   useEffect(() => {
     if (phase !== "done") return;
     streamRef.current?.getTracks().forEach((t) => t.stop());
-    router.push("/simulation/analyzing");
+    setPhase("analyzing");
+  }, [phase]);
+
+  // ── Effect to run analysis when phase is analyzing ─────────────────────────
+  useEffect(() => {
+    if (phase !== "analyzing") return;
+
+    let isCancelled = false;
+
+    async function execute() {
+      const { createClient } = await import("@/utils/supabase/client");
+      const {
+        analyzeRecording,
+        getQuestionTopic,
+        loadAnswerBlob,
+        loadSessionAnswers,
+        saveSessionToHistory,
+        saveAnalysisResult,
+        saveSimulationConfig,
+        loadSimulationConfig,
+      } = await import("@/app/lib/analysis");
+
+      const sessionAnswers = loadSessionAnswers();
+
+      // Start timer function (animates steps)
+      let step = 1;
+      setAnalysisActiveStep(1);
+      const stepTimer = setInterval(() => {
+        step = Math.min(step + 1, BASE_STEPS.length);
+        setAnalysisActiveStep(step);
+      }, 3200);
+
+      // Fallback logic
+      if (sessionAnswers.length === 0) {
+        try {
+          const { loadRecordingFromSession } = await import("@/app/lib/analysis");
+          const recording = await loadRecordingFromSession();
+          if (!recording) {
+            setAnalysisError("No recording found. Please record your interview again.");
+            clearInterval(stepTimer);
+            return;
+          }
+
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          const sessionId = new Date().toISOString().replace(/[:.]/g, "-");
+          const videoPaths: string[] = [];
+
+          const config = loadSimulationConfig();
+          const qText = recording.meta?.questionText ?? config.questions?.[0] ?? "";
+
+          const analyzePromise = analyzeRecording(recording.blob, {
+            questionTopic: getQuestionTopic(),
+            questionText: qText,
+            mimeType: recording.meta?.mimeType ?? "video/webm",
+            language: config.language ?? "en",
+          });
+
+          let uploadPromise = Promise.resolve();
+          if (user) {
+            const filePath = `${user.id}/${sessionId}_Q1.webm`;
+            uploadPromise = supabase.storage
+              .from("interview_videos")
+              .upload(filePath, recording.blob, { upsert: true })
+              .then(({ error }) => {
+                if (!error) videoPaths.push(filePath);
+              });
+          }
+
+          const [result] = await Promise.all([analyzePromise, uploadPromise]);
+          if (isCancelled) return;
+
+          saveAnalysisResult(result);
+          saveSessionToHistory(result, getQuestionTopic(), videoPaths);
+          
+          clearInterval(stepTimer);
+          setAnalysisActiveStep(BASE_STEPS.length);
+          setAnalysisFinished(true);
+          setAnalysisProgress(100);
+          setTimeout(() => {
+            if (!isCancelled) router.push("/simulation/result");
+          }, 800);
+        } catch (err) {
+          clearInterval(stepTimer);
+          setAnalysisError(err instanceof Error ? err.message : "Analysis failed.");
+        }
+        return;
+      }
+
+      setAnalysisAnswers(sessionAnswers);
+
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const sessionId = new Date().toISOString().replace(/[:.]/g, "-");
+      const videoPaths: string[] = [];
+
+      const results: any[] = [];
+      const total = sessionAnswers.length;
+
+      for (let i = 0; i < total; i++) {
+        if (isCancelled) {
+          clearInterval(stepTimer);
+          return;
+        }
+        const answer = sessionAnswers[i];
+        setCurrentAnalysisIdx(i);
+        setAnalysisPhaseLabel(
+          config.language === "id"
+            ? `Menganalisis Q${answer.questionIndex} dari ${total}`
+            : `Analyzing Q${answer.questionIndex} of ${total}`
+        );
+
+        const blob = await loadAnswerBlob(answer.idbKey);
+        if (!blob) {
+          clearInterval(stepTimer);
+          setAnalysisError(`Could not load recording for Q${answer.questionIndex}.`);
+          return;
+        }
+
+        try {
+          const config = loadSimulationConfig();
+          const qText = answer.questionText.trim() || config.questions?.[answer.questionIndex - 1] || "";
+
+          const analyzePromise = analyzeRecording(blob, {
+            questionTopic: getQuestionTopic(),
+            questionText: qText,
+            mimeType: answer.mimeType,
+            language: config.language ?? "en",
+          });
+
+          let uploadPromise = Promise.resolve();
+          if (user) {
+            const filePath = `${user.id}/${sessionId}_Q${answer.questionIndex}.webm`;
+            uploadPromise = supabase.storage
+              .from("interview_videos")
+              .upload(filePath, blob, { upsert: true })
+              .then(({ error }) => {
+                if (!error) videoPaths.push(filePath);
+              });
+          }
+
+          const [result] = await Promise.all([analyzePromise, uploadPromise]);
+          if (isCancelled) {
+            clearInterval(stepTimer);
+            return;
+          }
+
+          results.push(result);
+          setAnalysisProgress(Math.round(((i + 1) / total) * 100));
+        } catch (err) {
+          clearInterval(stepTimer);
+          setAnalysisError(
+            err instanceof Error
+              ? err.message
+              : `Analysis failed for Q${answer.questionIndex}.`,
+          );
+          return;
+        }
+      }
+
+      clearInterval(stepTimer);
+      if (isCancelled) return;
+
+      const merged = mergeResults(results);
+      saveSessionToHistory(merged, getQuestionTopic(), videoPaths);
+
+      const simulationConfig = loadSimulationConfig();
+      simulationConfig.questions = sessionAnswers.map(a => a.questionText);
+      saveSimulationConfig(simulationConfig);
+
+      saveAnalysisResult(merged);
+      setAnalysisFinished(true);
+      setAnalysisProgress(100);
+      setTimeout(() => {
+        if (!isCancelled) router.push("/simulation/result");
+      }, 800);
+    }
+
+    execute();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [phase, router]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
@@ -1177,6 +1448,169 @@ export default function RecordingPage() {
           background: rgba(255, 255, 255, 0.25);
         }
       `}</style>
+
+      {/* ── ANALYZING OVERLAY ── */}
+      {phase === "analyzing" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-lg animate-fade-in p-6">
+          <div className="w-full max-w-lg overflow-hidden rounded-[28px] border border-slate-100/10 bg-[#0F172A] p-8 shadow-2xl flex flex-col items-center">
+            {analysisError ? (
+              <div className="flex flex-col items-center gap-4 text-center w-full">
+                <div className="flex size-14 items-center justify-center rounded-full bg-rose-500/20 text-rose-500 ring-1 ring-rose-500/30 shadow-sm animate-pulse">
+                  <AppIcon name="x" className="size-6" />
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-tight">
+                  {config.language === 'id' ? 'Kesalahan Analisis' : 'Analysis Error'}
+                </h3>
+                <p className="text-sm text-slate-400 mt-1 max-w-xs">{analysisError}</p>
+                <div className="mt-6 flex gap-3 w-full">
+                  <button 
+                    onClick={() => {
+                      if (confirm(config.language === 'id' ? "Yakin ingin keluar? Progress simulasi ini akan hilang." : "Are you sure? Simulation progress will be lost.")) {
+                        router.push("/simulation/setup");
+                      }
+                    }} 
+                    className="flex-1 rounded-xl border border-white/10 px-5 py-3 text-[14px] font-semibold text-slate-300 hover:bg-white/5 transition-all cursor-pointer text-center"
+                  >
+                    {config.language === 'id' ? 'Batal' : 'Cancel'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setAnalysisError(null);
+                      setPhase("done"); // re-trigger the done effect to retry
+                    }} 
+                    className="flex-1 rounded-xl bg-indigo-600 px-6 py-3 text-[14px] font-semibold text-white hover:bg-indigo-700 hover:shadow-lg transition-all text-center"
+                  >
+                    {config.language === 'id' ? 'Coba Lagi' : 'Retry'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center w-full text-center">
+                {/* Spinner */}
+                <div className="relative flex items-center justify-center mb-6">
+                  <svg className="size-20 animate-spin text-slate-800" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2.5" />
+                    <path className="text-emerald-500" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-emerald-500 animate-pulse">
+                    <AppIcon name="ai" className="size-6 text-emerald-400" />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1 w-full mb-6">
+                  <h3 className="text-2xl font-bold text-white tracking-tight">
+                    {config.language === 'id' ? 'Menganalisis Jawaban' : 'Analyzing Answers'}
+                  </h3>
+                  <p className="text-xs font-semibold uppercase tracking-[2px] text-emerald-500 mt-1">
+                    {analysisPhaseLabel || (config.language === 'id' ? "Menjalankan evaluasi..." : "Running evaluation...")}
+                  </p>
+                </div>
+
+                {/* Overall progress bar */}
+                {analysisAnswers.length > 1 && (
+                  <div className="w-full mb-6 bg-slate-800/40 p-4 rounded-2xl border border-white/5 text-left">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {config.language === 'id' ? 'Kemajuan Keseluruhan' : 'Overall Progress'}
+                      </span>
+                      <span className="text-xs font-bold font-mono text-emerald-400">{analysisProgress}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden shadow-inner">
+                      <div 
+                        className="h-full bg-emerald-500 transition-all duration-500 ease-out rounded-full"
+                        style={{ width: `${analysisProgress}%` }}
+                      />
+                    </div>
+                    {/* Tiny indicators for each question */}
+                    <div className="mt-3 flex gap-1.5 flex-wrap">
+                      {analysisAnswers.map((a, i) => (
+                        <span
+                          key={a.questionIndex}
+                          className={`rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                            i < currentAnalysisIdx
+                              ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/10"
+                              : i === currentAnalysisIdx
+                              ? "bg-white/10 text-white border border-white/20"
+                              : "bg-white/5 text-slate-600 border border-white/5"
+                          }`}
+                        >
+                          Q{a.questionIndex}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Steps List */}
+                <div className="w-full overflow-hidden rounded-2xl border border-white/[0.06] bg-slate-900/60 divide-y divide-white/[0.04] text-left">
+                  {BASE_STEPS.map((step) => {
+                    const state = stepState(step.id, analysisActiveStep, analysisFinished);
+                    return (
+                      <div
+                        key={step.id}
+                        className={`flex items-center justify-between px-5 py-3.5 transition-colors duration-300 ${
+                          state === "active" ? "bg-white/[0.02]" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="flex size-5 shrink-0 items-center justify-center">
+                            {state === "done" ? (
+                              <CheckIcon />
+                            ) : state === "error" ? (
+                              <ErrorIcon />
+                            ) : (
+                              <span
+                                className={`flex size-5 items-center justify-center rounded border text-[10px] font-bold ${
+                                  state === "active"
+                                    ? "border-emerald-500/50 text-emerald-400"
+                                    : "border-white/10 text-slate-600"
+                                }`}
+                              >
+                                {step.id}
+                              </span>
+                            )}
+                          </div>
+
+                          <span
+                            className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
+                              state === "active"
+                                ? "text-white"
+                                : state === "done"
+                                ? "text-slate-400"
+                                : "text-slate-600"
+                            }`}
+                          >
+                            {config.language === 'id' 
+                              ? ["Transkripsi Audio", "Analisis Pola Suara", "Ekspresi Wajah", "Penilaian Konten Semantik", "Menghasilkan Umpan Balik"][step.id - 1]
+                              : step.label
+                            }
+                          </span>
+
+                          {state === "active" && (
+                            <span className="ml-1 size-3 animate-spin rounded-full border-2 border-emerald-500/20 border-t-emerald-500" />
+                          )}
+                        </div>
+
+                        <span
+                          className={`text-[10px] tracking-wider transition-colors ${
+                            state === "active"
+                              ? "text-slate-400"
+                              : state === "done"
+                              ? "text-slate-600"
+                              : "text-slate-700"
+                          }`}
+                        >
+                          {step.tech}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
