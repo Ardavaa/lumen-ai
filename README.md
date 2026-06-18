@@ -2,8 +2,6 @@
 
 ![](banner-1.png)
 
-![](banner.png)
-
 **Platform Simulasi Wawancara Berbasis AI dengan Penilaian Multimodal**
 
 ---
@@ -17,8 +15,6 @@
 | Muhammad Umar               | Computer Vision &amp; Pipeline Fusion Specialist       |
 | Muhammad Naufal Satria      | Audi &amp; Linguistic (NLP) Specialist                 |
 | Muhammad Rafif Radithya     | Computer Vision Specialist, UI/UX Designer             |
-|                             |                                                        |
-
 
 ---
 
