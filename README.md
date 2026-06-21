@@ -3,19 +3,6 @@
 ![](banner-1.png)
 
 **Platform Simulasi Wawancara Berbasis AI dengan Penilaian Multimodal**
-
----
-
-## Team
-
-
-| **Name**                    | **Role**                                               |
-| --------------------------- | ------------------------------------------------------ |
-| Muhammad Karov Ardava Barus | Lead, AI Engineer, Fullstack Developer, UI/UX Designer |
-| Muhammad Umar               | Computer Vision &amp; Pipeline Fusion Specialist       |
-| Muhammad Naufal Satria      | Audi &amp; Linguistic (NLP) Specialist                 |
-| Muhammad Rafif Radithya     | Computer Vision Specialist, UI/UX Designer             |
-
 ---
 
 ## 1. Masalah: Kurangnya Umpan Balik Objektif dalam Persiapan Wawancara
